@@ -1,0 +1,38 @@
+/* App.css */
+.App {
+  text-align: center;
+  background-color: #ffffff; /* Red background */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  color: #ffcc00;
+}
+
+.App-header {
+  background-color: #ff4444; /* Red background */
+  padding: 20px;
+  border-radius: 15px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.App-title {
+  color: #ffcc00; /* Yellow text */
+  font-size: 32px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.App-content {
+  background-color: #ffffff; /* White background for content */
+  border: 2px solid #ffcc00; /* Yellow border */
+  border-radius: 15px;
+  padding: 20px;
+  width: 100%;
+  max-width: 800px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
