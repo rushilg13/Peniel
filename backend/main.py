@@ -1,5 +1,9 @@
 # Import Modules
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File, Form
+import csv
+import io
+import pandas as pd
+import openpyxl
 # import pickle
 from starlette.responses import Response
 from fastapi.middleware import Middleware
@@ -12,6 +16,8 @@ from fastapi.responses import FileResponse
 import os
 import openai
 from openai import OpenAI
+from docx import Document
+import fitz
 
 # from dotenv import load_dotenv
 # Load .env files
@@ -25,14 +31,16 @@ middleware = [ Middleware(CORSMiddleware, allow_origins=['*'], allow_credentials
 # Set up app
 app = FastAPI(middleware=middleware, docs_url=None, redoc_url=None)
 client = OpenAI()
+
 # connect to MongoDB
 # MONGODB_URI = os.environ.get('MONGODB_URI')
 # myclient = pymongo.MongoClient(MONGODB_URI)
 # mydb = myclient["GoodNews"]
 
+messages = [ {"role": "system", "content": "Perform a comprehensive analysis of the provided bank regulatory dataset to ensure compliance with specified rules."} ]
+
 @app.get('/')
 def home():
-    messages = [ {"role": "system", "content": ""} ]
     message = "what fields are important for risk scoring of a bank transaction involving US auto loan?"
     if message:
         messages.append(
@@ -45,6 +53,73 @@ def home():
     print(f"ChatGPT: {reply}")
     messages.append({"role": "assistant", "content": reply})
     return {"is this homepage" : True, "This is chatgpt's reply": reply}
+
+@app.post('/upload-dataset')
+async def upload_excel_parser(file: UploadFile = File(...)):
+    file_extension = file.filename.split(".")[-1]
+    if file_extension == 'xlsx':
+        contents = file.file.read()
+        buffer = io.BytesIO(contents)
+        df = pd.read_excel(buffer, engine='openpyxl')
+        buffer.close()
+        file.file.close()
+        print(df.head())
+    elif file_extension == 'xls':
+        contents = file.file.read()
+        buffer = io.BytesIO(contents)
+        df = pd.read_excel(buffer)
+        buffer.close()
+        file.file.close()
+        print(df.head())
+    elif file_extension == 'csv':
+        contents = file.file.read()
+        buffer = io.BytesIO(contents)
+        df = pd.read_csv(buffer)
+        buffer.close()
+        file.file.close()
+        print(df.head())
+    else:
+        return "Please upload excel/.csv file."
+    return "success"
+
+@app.post('/upload-rules')
+async def upload_rules_parser(file: UploadFile = File(None), message: str = Form(None)):
+    if message:
+        print("Received message:", message)
+    else:
+        message = ""
+    if file:
+        extracted_text =""
+        file_extension = file.filename.split(".")[-1]
+        if file_extension == 'txt':
+            extracted_text = file.file.read().decode("utf-8")
+        elif file_extension == 'docx':
+            doc = Document(file.file._file)
+            fullText = []
+            for para in doc.paragraphs:
+                fullText.append(para.text)
+            extracted_text = (fullText)
+        elif file_extension == 'pdf':
+            contents = await file.read()
+            pdf_document = fitz.open(stream=contents, filetype="pdf")
+            extracted_text = "\n".join([page.get_text("text") for page in pdf_document])
+        else:
+            extracted_text = ""
+            return "Please upload .txt/.docx/.pdf file."
+    else:
+        extracted_text = ""
+        if message != "" and extracted_text != "":
+            messages.append({"role": "user", "content": message},)
+            chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
+            reply = chat.choices[0].message.content
+            messages.append({"role": "assistant", "content": reply})
+            print(f"ChatGPT: {reply}")
+            return(reply)
+        elif message == "" and extracted_text != "":
+            pass
+        elif message != "" and extracted_text == "":
+            pass
+    return "success"
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
