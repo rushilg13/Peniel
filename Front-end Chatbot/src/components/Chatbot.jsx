@@ -20,7 +20,7 @@ const Chatbot = () => {
 
     try {
       // Send message and file to backend
-      const response = await axios.post("http://localhost:5000/chat", formData, {
+      const response = await axios.post("http://localhost:8000/upload-rules", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
