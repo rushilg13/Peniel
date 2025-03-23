@@ -38,6 +38,38 @@ const Chatbot = () => {
     setFile(null);
   };
 
+  const handleSendTransaction = async () => {
+    if (!input.trim() && !file) return;
+
+    // Add user message to chat
+    const userMessage = { text: input, sender: "user" };
+    setMessages((prev) => [...prev, userMessage]);
+
+    // Prepare form data
+    const formData = new FormData();
+    if (file) formData.append("file", file);
+    formData.append("message", input);
+
+    try {
+      // Send message and file to backend
+      const response = await axios.post("http://localhost:8000/upload-dataset", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      // Add bot response to chat
+      const botMessage = { text: response.data.response, sender: "bot" };
+      setMessages((prev) => [...prev, botMessage]);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      const errorMessage = { text: "Error processing your request.", sender: "bot" };
+      setMessages((prev) => [...prev, errorMessage]);
+    }
+
+    // Clear input and file
+    setInput("");
+    setFile(null);
+  };
+
   return (
     <div style={styles.chatbotContainer}>
       <div style={styles.header}>
@@ -69,6 +101,14 @@ const Chatbot = () => {
           style={styles.fileInput}
         />
         <button onClick={handleSendMessage} style={styles.sendButton}>
+          Send
+        </button>
+        <input
+          type="file"
+          onChange={(e) => setFile(e.target.files[0])}
+          style={styles.fileInput}
+        />
+        <button onClick={handleSendTransaction} style={styles.sendButton}>
           Send
         </button>
       </div>

@@ -64,6 +64,14 @@ async def upload_excel_parser(file: UploadFile = File(...)):
         buffer.close()
         file.file.close()
         print(df.head())
+        # csv = df.to_csv(index=False)
+        _json = df.to_json()
+        messages.append({"role": "user", "content": "This is the dataset in .json format:" + _json + "\n wait for rules to be provided. Just reply with 'Waiting for rules to be entered.' "},)
+        chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
+        reply = chat.choices[0].message.content
+        messages.append({"role": "assistant", "content": reply})
+        print(f"ChatGPT: {reply}")
+        return({"reply" : reply})
     elif file_extension == 'xls':
         contents = file.file.read()
         buffer = io.BytesIO(contents)
@@ -71,6 +79,12 @@ async def upload_excel_parser(file: UploadFile = File(...)):
         buffer.close()
         file.file.close()
         print(df.head())
+        messages.append({"role": "user", "content": "This is the dataset in .csv format:" + csv + "\n wait for rules to be provided. Just reply with 'Waiting for rules to be entered.' "},)
+        chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
+        reply = chat.choices[0].message.content
+        messages.append({"role": "assistant", "content": reply})
+        print(f"ChatGPT: {reply}")
+        return({"reply" : reply})
     elif file_extension == 'csv':
         contents = file.file.read()
         buffer = io.BytesIO(contents)
@@ -78,6 +92,12 @@ async def upload_excel_parser(file: UploadFile = File(...)):
         buffer.close()
         file.file.close()
         print(df.head())
+        messages.append({"role": "user", "content": "This is the dataset in .csv format:" + csv + "\n wait for rules to be provided. Just reply with 'Waiting for rules to be entered.' "},)
+        chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
+        reply = chat.choices[0].message.content
+        messages.append({"role": "assistant", "content": reply})
+        print(f"ChatGPT: {reply}")
+        return({"reply" : reply})
     else:
         return "Please upload excel/.csv file."
     return "success"
@@ -108,17 +128,27 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
             return "Please upload .txt/.docx/.pdf file."
     else:
         extracted_text = ""
-        if message != "" and extracted_text != "":
-            messages.append({"role": "user", "content": message},)
-            chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
-            reply = chat.choices[0].message.content
-            messages.append({"role": "assistant", "content": reply})
-            print(f"ChatGPT: {reply}")
-            return(reply)
-        elif message == "" and extracted_text != "":
-            pass
-        elif message != "" and extracted_text == "":
-            pass
+    if message != "" and extracted_text != "":
+        messages.append({"role": "user", "content": "These rules are user-defined. Apply these on the dataset uploaded." + message + "These set of rules are extracted from a regulatory dataset, apply these as well on the dataset uploaded" + extracted_text},)
+        chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
+        reply = chat.choices[0].message.content
+        messages.append({"role": "assistant", "content": reply})
+        print(f"ChatGPT: {reply}")
+        return({"reply":reply})
+    elif message == "" and extracted_text != "":
+        messages.append({"role": "user", "content": "These set of rules are extracted from a regulatory dataset, apply these on the dataset uploaded" + extracted_text + "Show summary of where data is not aligned with the rules."},)
+        chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
+        reply = chat.choices[0].message.content
+        messages.append({"role": "assistant", "content": reply})
+        print(f"ChatGPT: {reply}")
+        return({"reply":reply})
+    elif message != "" and extracted_text == "":
+        messages.append({"role": "user", "content": "These rules are user-defined. Apply these on the dataset uploaded." + message},)
+        chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
+        reply = chat.choices[0].message.content
+        messages.append({"role": "assistant", "content": reply})
+        print(f"ChatGPT: {reply}")
+        return({"reply":reply})
     return "success"
 
 if __name__ == "__main__":
