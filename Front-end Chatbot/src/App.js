@@ -9,18 +9,11 @@ function App() {
   return (
     
     <Router>
-      {/* Navigation Bar */}
-      <nav className="nav-links">
-          <Link to="/">Chatbot</Link>
-          <Link to="/new-page">New Page</Link>
-          <Link to="/stats">Stats</Link> {/* New Link for Stats Page */}
-        </nav>    
+        
 
         <main>
           <Routes>
             <Route path="/" element={<Chatbot />} />
-            <Route path="/new-page" element={<NewPage />} />
-            <Route path="/stats" element={<StatsChart />} />
           </Routes>
         </main>
   
