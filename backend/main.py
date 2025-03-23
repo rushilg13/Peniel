@@ -23,7 +23,9 @@ import fitz
 # Load .env files
 # load_dotenv()
 
-os.environ["OPENAI_API_KEY"] = "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"
+# os.environ["OPENAI_API_KEY"] = "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"
+
+os.environ["OPENAI_API_KEY"] = "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"
 
 # Set Middleware
 middleware = [ Middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])]
@@ -143,7 +145,7 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         print(f"ChatGPT: {reply}")
         return({"reply":reply})
     elif message != "" and extracted_text == "":
-        messages.append({"role": "user", "content": "These rules are user-defined. Apply these on the dataset uploaded." + message},)
+        messages.append({"role": "user", "content": "These rules are user-defined. Apply these on the dataset uploaded." + message + "\nIn your reply please include which schedule and sub-schedule it belongs to."},)
         chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
         reply = chat.choices[0].message.content
         messages.append({"role": "assistant", "content": reply})
