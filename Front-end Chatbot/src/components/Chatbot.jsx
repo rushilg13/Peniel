@@ -1,50 +1,118 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { Pie, Bar } from "react-chartjs-2";
+import { Chart, ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from "chart.js";
+
+// Register Chart.js components
+Chart.register(ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const Chatbot = () => {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [file, setFile] = useState(null);
+  const [user_id, setUserId] = useState("user_123"); // Default user ID
+  const [message, setMessage] = useState("");
+  const [conversation, setConversation] = useState([]);
+  const [rulesFile, setRulesFile] = useState(null);
+  const [transactionsFile, setTransactionsFile] = useState(null);
+  const [results, setResults] = useState([]);
+  const [pieChartData, setPieChartData] = useState(null);
+  const [barChartData, setBarChartData] = useState(null);
 
   const handleSendMessage = async () => {
-    if (!input.trim() && !file) return;
-
-    // Add user message to chat
-    const userMessage = { text: input, sender: "user" };
-    setMessages((prev) => [...prev, userMessage]);
-
-    // Prepare form data
-    const formData = new FormData();
-    if (file) formData.append("file", file);
-    formData.append("message", input);
+    if (!message.trim()) return; // Ignore empty messages
 
     try {
-      // Send message and file to backend
-      const response = await axios.post("http://localhost:5000/chat", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const res = await axios.post("http://127.0.0.1:8000/chat", {
+        user_id: user_id,
+        message: message,
       });
-
-      // Add bot response to chat
-      const botMessage = { text: response.data.response, sender: "bot" };
-      setMessages((prev) => [...prev, botMessage]);
+      setConversation((prev) => [
+        ...prev,
+        { sender: "user", text: message },
+        { sender: "bot", text: res.data.response },
+      ]);
+      setMessage(""); // Clear input after sending
     } catch (error) {
       console.error("Error sending message:", error);
-      const errorMessage = { text: "Error processing your request.", sender: "bot" };
-      setMessages((prev) => [...prev, errorMessage]);
+      setConversation((prev) => [
+        ...prev,
+        { sender: "bot", text: "Error processing your request." },
+      ]);
     }
+  };
 
-    // Clear input and file
-    setInput("");
-    setFile(null);
+  const handleUploadRules = async () => {
+    if (!rulesFile) return;
+
+    const formData = new FormData();
+    formData.append("file", rulesFile);
+
+    try {
+      const res = await axios.post("http://127.0.0.1:8000/upload-rules", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setConversation((prev) => [
+        ...prev,
+        { sender: "bot", text: `Rules extracted: ${res.data.rules}` },
+      ]);
+    } catch (error) {
+      console.error("Error uploading rules file:", error);
+    }
+  };
+
+  const handleUploadTransactions = async () => {
+    if (!transactionsFile) return;
+
+    const formData = new FormData();
+    formData.append("file", transactionsFile);
+
+    try {
+      const res = await axios.post("http://127.0.0.1:8000/upload-transactions", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setResults(res.data.results);
+
+      // Set pie chart data
+      setPieChartData({
+        labels: ["Flagged", "Non-Flagged"],
+        datasets: [
+          {
+            data: [res.data.flagged_count, res.data.non_flagged_count],
+            backgroundColor: ["#FF6384", "#36A2EB"],
+          },
+        ],
+      });
+
+      // Set bar chart data
+      setBarChartData({
+        labels: Object.keys(res.data.rule_counts),
+        datasets: [
+          {
+            label: "Number of Transactions",
+            data: Object.values(res.data.rule_counts),
+            backgroundColor: "#4BC0C0",
+          },
+        ],
+      });
+    } catch (error) {
+      console.error("Error uploading transactions file:", error);
+    }
+  };
+
+  const handleResetSession = async () => {
+    try {
+      await axios.post("http://127.0.0.1:8000/reset", { user_id: user_id });
+      setConversation([]); // Clear conversation history
+    } catch (error) {
+      console.error("Error resetting session:", error);
+    }
   };
 
   return (
-    <div style={styles.chatbotContainer}>
-      <div style={styles.header}>
-        <h1 style={styles.appName}>Compliance Chatbot</h1>
-      </div>
+    <div style={styles.container}>
+      <h1 style={styles.header}>Compliance Chatbot</h1>
+
+      {/* Chat Window */}
       <div style={styles.chatWindow}>
-        {messages.map((msg, index) => (
+        {conversation.map((msg, index) => (
           <div
             key={index}
             style={
@@ -55,110 +123,173 @@ const Chatbot = () => {
           </div>
         ))}
       </div>
+
+      {/* Text Input */}
       <div style={styles.inputContainer}>
         <input
           type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
           placeholder="Type your message..."
           style={styles.inputField}
+          onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
         />
-        <input
-          type="file"
-          onChange={(e) => setFile(e.target.files[0])}
-          style={styles.fileInput}
-        />
-        <button onClick={handleSendMessage} style={styles.sendButton}>
+        <button onClick={handleSendMessage} style={styles.button}>
           Send
         </button>
       </div>
+
+      {/* File Uploads */}
+      <div style={styles.uploadContainer}>
+        <div style={styles.fileUpload}>
+          <input
+            type="file"
+            onChange={(e) => setRulesFile(e.target.files[0])}
+            style={styles.fileInput}
+          />
+          <button onClick={handleUploadRules} style={styles.uploadButton}>
+            Upload Rules
+          </button>
+        </div>
+        <div style={styles.fileUpload}>
+          <input
+            type="file"
+            onChange={(e) => setTransactionsFile(e.target.files[0])}
+            style={styles.fileInput}
+          />
+          <button onClick={handleUploadTransactions} style={styles.uploadButton}>
+            Upload Transactions
+          </button>
+        </div>
+      </div>
+
+      {/* Reset Button */}
+      <button onClick={handleResetSession} style={styles.resetButton}>
+        Reset Session
+      </button>
+
+      {/* Charts */}
+      {pieChartData && (
+        <div style={styles.chartContainer}>
+          <h2>Percentage of Flagged Transactions</h2>
+          <Pie data={pieChartData} />
+        </div>
+      )}
+      {barChartData && (
+        <div style={styles.chartContainer}>
+          <h2>Transactions by Rule Subsection</h2>
+          <Bar data={barChartData} />
+        </div>
+      )}
     </div>
   );
 };
 
-// Updated Styles
+// Styles
 const styles = {
-  chatbotContainer: {
+  container: {
     maxWidth: "800px",
     margin: "0 auto",
     padding: "20px",
-    border: "2px solid #ff4444",
-    borderRadius: "15px",
-    backgroundColor: "#ff4444",
-    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+    fontFamily: "Arial, sans-serif",
+    backgroundColor: "#f9f9f9",
+    borderRadius: "10px",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
   },
   header: {
-    backgroundColor: "#ff4444",
-    padding: "10px",
-    borderRadius: "10px 10px 0 0",
     textAlign: "center",
-  },
-  appName: {
-    color: "#ffcc00",
-    fontSize: "28px",
-    fontWeight: "bold",
-    margin: "0",
+    color: "#333",
+    marginBottom: "20px",
   },
   chatWindow: {
-    height: "500px",
+    height: "300px",
     overflowY: "auto",
-    border: "2px solid #ffcc00",
+    border: "1px solid #ddd",
     borderRadius: "10px",
-    padding: "15px",
-    marginBottom: "15px",
-    backgroundColor: "#ffffff",
+    padding: "10px",
+    marginBottom: "20px",
+    backgroundColor: "#fff",
   },
   userMessage: {
     textAlign: "right",
-    margin: "10px 0",
+    margin: "5px 0",
     padding: "10px",
-    backgroundColor: "#ffcc00",
+    backgroundColor: "#d1e7dd",
     borderRadius: "10px",
-    color: "#000000",
     maxWidth: "70%",
     marginLeft: "auto",
   },
   botMessage: {
     textAlign: "left",
-    margin: "10px 0",
+    margin: "5px 0",
     padding: "10px",
     backgroundColor: "#f8d7da",
     borderRadius: "10px",
-    color: "#000000",
     maxWidth: "70%",
   },
   inputContainer: {
     display: "flex",
     gap: "10px",
-    alignItems: "center",
+    marginBottom: "20px",
   },
   inputField: {
     flex: 1,
-    padding: "12px",
-    border: "2px solid #ffcc00",
-    borderRadius: "10px",
+    padding: "10px",
+    border: "1px solid #ddd",
+    borderRadius: "5px",
     fontSize: "16px",
+  },
+  button: {
+    padding: "10px 20px",
+    border: "none",
+    borderRadius: "5px",
+    backgroundColor: "#007bff",
+    color: "#fff",
+    cursor: "pointer",
+    fontSize: "16px",
+  },
+  uploadContainer: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+    marginBottom: "20px",
+  },
+  fileUpload: {
+    display: "flex",
+    gap: "10px",
   },
   fileInput: {
-    padding: "12px",
-    border: "2px solid #ffcc00",
-    borderRadius: "10px",
-    backgroundColor: "#ffffff",
-    cursor: "pointer",
+    flex: 1,
+    padding: "10px",
+    border: "1px solid #ddd",
+    borderRadius: "5px",
   },
-  sendButton: {
-    padding: "12px 24px",
+  uploadButton: {
+    padding: "10px 20px",
     border: "none",
-    borderRadius: "10px",
-    backgroundColor: "#ffcc00",
-    color: "#000000",
-    fontSize: "16px",
-    fontWeight: "bold",
+    borderRadius: "5px",
+    backgroundColor: "#28a745",
+    color: "#fff",
     cursor: "pointer",
-    transition: "background-color 0.3s ease",
+    fontSize: "16px",
   },
-  sendButtonHover: {
-    backgroundColor: "#e6b800",
+  resetButton: {
+    padding: "10px 20px",
+    border: "none",
+    borderRadius: "5px",
+    backgroundColor: "#dc3545",
+    color: "#fff",
+    cursor: "pointer",
+    fontSize: "16px",
+    width: "100%",
+    marginBottom: "20px",
+  },
+  chartContainer: {
+    marginTop: "20px",
+    padding: "20px",
+    border: "1px solid #ddd",
+    borderRadius: "10px",
+    backgroundColor: "#fff",
   },
 };
 
