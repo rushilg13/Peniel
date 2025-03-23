@@ -1,8 +1,6 @@
 import React from "react";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import Chatbot from "./components/Chatbot"; // Existing component
-import NewPage from "./components/NewPage";  // New page
-import StatsChart from "./components/StatsChart"; // New component
 import "./App.css"; // Optional: Add some basic styling
 
 function App() {
