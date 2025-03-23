@@ -257,7 +257,7 @@ const Chatbot = () => {
 const styles = {
   mainContainer: {
     display: "flex",
-    height: "100vh",
+    height: "110vh",
     width: "100%",
   },
   chatbotContainer: {
