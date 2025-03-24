@@ -1,19 +1,23 @@
 import React from "react";
-import Chatbot from "./components/Chatbot"; // Import the FileUpload component
+import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
+import Chatbot from "./components/Chatbot"; // Existing component
 import "./App.css"; // Optional: Add some basic styling
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>Regulatory Compliance Assistant</h1>
-        <p>Upload your regulatory document and transaction data to analyze compliance.</p>
-      </header>
-      <main>
-        <Chatbot /> {/* Render the FileUpload component */}
-      </main>
-    </div>
+    
+    <Router>
+        
+
+        <main>
+          <Routes>
+            <Route path="/" element={<Chatbot />} />
+          </Routes>
+        </main>
+  
+    </Router>
   );
 }
+
 
 export default App;
