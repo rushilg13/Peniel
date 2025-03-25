@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import axios from "axios";
-import "./Chatbot.css";
 import ChartsAndTable from "./ChartsAndTable";
+import WelcomePage from "./WelcomePage";
 import attachLogo from "../assets/images/attachLogo.png";
+import sampleCSV from "../assets/data/sample.csv"; // Path to your CSV file
 
 
 const Chatbot = () => {
@@ -25,19 +26,23 @@ const Chatbot = () => {
     if (attachedFile) {
       formData.append("file", attachedFile); // Attach the file if provided
     }
-  
+    setConversation((prev) => [
+      ...prev,
+      { sender: "user", text: message || attachedFile.name },
+    ]);
+    setMessage(""); // Clear input after sending
     try {
       const res = await axios.post("http://127.0.0.1:8000/upload-rules", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      console.log("Vani printing res: "+res.data.response);
       setConversation((prev) => [
         ...prev,
-        { sender: "user", text: message || attachedFile.name },
-        { sender: "bot", text: res.data.response },
+        { sender: "bot", text: res.data.reply },
       ]);
-      setMessage(""); // Clear input after sending
       setAttachedFile(null); // Clear the attached file after sending
+      if (res.data.df)
+        setResults(res.data.df);
+      console.log("Reply:", res.data.reply);
     } catch (error) {
       console.error("Error sending message:", error);
       setConversation((prev) => [
@@ -54,12 +59,24 @@ const Chatbot = () => {
     const formData = new FormData();
     formData.append("file", transactionsFile);
 
+    setConversation((prev) => [
+      ...prev,
+      { sender: "user", text: transactionsFile.name },
+    ]);
+
     try {
       const res = await axios.post("http://127.0.0.1:8000/upload-dataset", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setResults(res.data.results);
-      console.log("Results:", res.data.results);
+
+      console.log("res: "+res+" res.data "+res.data+" res.data.reply "+res.data.reply);
+      res.data && res.data.reply ? setConversation((prev) => [
+        ...prev,
+        { sender: "bot", text: res.data.reply },
+      ]) : setConversation((prev) => [
+        ...prev,
+        { sender: "bot", text: "Error uploading Data" },
+      ]);
     } catch (error) {
       console.error("Error uploading transactions file:", error);
     }
@@ -69,13 +86,10 @@ const Chatbot = () => {
     try {
       await axios.post("http://127.0.0.1:8000/reset", { user_id: user_id });
       setConversation([]); // Clear conversation history
+      setResults(null);
     } catch (error) {
       console.error("Error resetting session:", error);
     }
-  };
-
-  const handleDownload = async () => {
-
   };
 
   return (
@@ -144,12 +158,13 @@ const Chatbot = () => {
         <button onClick={handleResetSession} style={styles.resetButton}>
           Reset Session
         </button>
-        {/* Download Button should only render after data has been processed */}
-        <button onClick={handleDownload} style={styles.downloadButton}>
-          Download
-        </button>
       </div>
-      <ChartsAndTable />
+      {results && results.length > 0 && results.data.df? ( 
+        <ChartsAndTable res={results} />
+       ) : (
+        <WelcomePage />
+      )}
+      
     </div>
   );
 };
@@ -243,7 +258,8 @@ const styles = {
   sendButton: {
     padding: "10px 20px",
     border: "none",
-    backgroundColor: "#007bff",
+    borderRadius: "5px",
+    backgroundColor: "#059e40",
     color: "#fff",
     cursor: "pointer",
     fontSize: "16px",
@@ -300,17 +316,6 @@ const styles = {
     fontSize: "16px",
     width: "100%",
     marginBottom: "20px",
-  },
-  downloadButton: {
-    padding: "10px 20px",
-    border: "none",
-    backgroundColor: "#007bff",
-    color: "#fff",
-    cursor: "pointer",
-    fontSize: "16px",
-    borderLeft: "1px solid #ddd", // Add a separator between the input and button
-    display: "block", // Ensure the button behaves like a block element
-    margin: "0 auto", // Center the button horizontally
   }
 };
 

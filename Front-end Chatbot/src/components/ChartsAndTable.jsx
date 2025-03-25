@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Pie, Bar, Line } from "react-chartjs-2"; // Import Line chart
 import { Chart, ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement } from "chart.js";
 import { Table, Tabs } from "antd"; // Import Ant Design Table
+import "./ChartsAndTable.css";
 
 // Register Chart.js components
 Chart.register(
@@ -21,44 +22,126 @@ Chart.register(
 
   const ChartsAndTable = ({ res }) => {
 
+    //Compliant data - flag 0, low risk, green
+    //Regulatory Risk Defaulters - flag 1, orange
+    //Potential Defaulters - flag 0, high and medium risk, red
+    //Errors in Data - flag 2, yellow
     const data=res?.data||{};
-    // Pie Chart Data
-      const [pieChartData, setPieChartData] = useState({
-        labels: [ "Non-Flagged","Flagged for Operational Risk", "Flagged for Regulatory Risk"],
-        datasets: [
-          {
-            data: [30, 25, 45], 
-            backgroundColor: ["#059e40","#d14c04", "#cc020d"]//green, orange, red
-          },
-        ],
-      });
+    //get transactions having flag 0, 1, 2
+    const [flag0Data, setFlag0Data] = useState([]);
+
+  // Function to filter transactions with flag 0
+  const filterFlag0Data = () => {
+    if (res?.transactions) {
+      const filteredData = res.data.transactions.filter(
+        (transaction) => transaction.flag === 0
+      );
+      setFlag0Data(filteredData);
+      console.log("Filtered Data with Flag 0:", filteredData);
+    }
+  };
+
+  // Automatically filter data when `res` changes
+  useEffect(() => {
+    filterFlag0Data();
+  }, [res]);
+
+    //segregate flag 0 transactions into compliant_transactions or potentialDefaulters_transactions based on risk label
+    const [compliant_transactions, setCompliant_transactions] = useState();
+    // const [compliantData, setCompliantData] = useState({
+    //   columns: [
+    //     {
+    //       title: "Risk Label",
+    //       dataIndex: "riskLabel",
+    //       key: "riskLabel",
+    //     },
+    //     {
+    //       title: "Transaction ID",
+    //       dataIndex: "transactionID",
+    //       key: "transactionID",
+    //     },
+    //     {
+    //       title: "Customer ID",
+    //       dataIndex: "customerID",
+    //       key: "customerID",
+    //     },
+    //     {
+    //       title: "Product",
+    //       dataIndex: "subschedule",
+    //       key: "subschedule",
+    //     },
+    //   ],
+    //   data: data.compliant_transactions.map((transaction, index) => ({
+    //     key: index + 1, // Unique key for each row
+    //     riskLabel: "Low",
+    //     transactionID: transaction.transactionID,
+    //     customerID: transaction.customerID,
+    //     subschedule: transaction.subschedule,
+    //   })),  
+    // })
     
-      const pieChartOptions = {
+    const [pieChartData, setPieChartData] = useState({
+      labels: [], // Empty labels
+      datasets: [
+        {
+          data: [], // Empty data array
+          backgroundColor: [], // Empty background colors
+        },
+      ],
+    });
+
+    // Update pieChartData when `res` changes
+    // useEffect(() => {
+    //   if (res) {
+    //     setPieChartData({
+    //       labels: [ "Compliant Data","Regulatory Risk Defaulters", "Potential Defaulters", "Errors In Data"],
+    //       datasets: [
+    //         {
+    //           data: [
+    //             res.non_flagged_count || 0,
+    //             res.operational_flagged_count || 0,
+    //             res.regulatory_flagged_count || 0,
+    //           ],
+    //           backgroundColor: ["#059e40", "#d14c04", "#cc020d"], // Green, Orange, Red
+    //         },
+    //       ],
+    //     });
+    //   }
+    // }, [res]); // Dependency array ensures this runs only when `res` changes
+
+
+    const pieChartOptions = {
       plugins: {
         legend: {
           align: "start"
         }
       }
-      };
-    
+    };
+
+
       // Bar Chart Data
       const [barChartData, setBarChartData] = useState({
         labels: ["A-1", "A-2", "A-3", "A-4", "A-5", "A-6", "A-7", "A-8", "A-9", "A-10"],
         datasets: [
           {
-            label: "Non-Flagged",
+            label: "Compliant Data",
             data: [12, 19, 8, 15, 10, 14, 9, 7, 13, 11],
             backgroundColor: "#059e40",
           },
           {
-            label: "Flagged for Operational Risk",
+            label: "Regulatory Risk Defaulters",
             data: [5, 10, 4, 8, 6, 7, 5, 3, 6, 5],
             backgroundColor: "#d14c04",
           },
           {
-            label: "Flagged for Regulatory Risk",
+            label: "Potential Defaulters",
             data: [3, 6, 2, 4, 3, 5, 2, 1, 4, 3],
             backgroundColor: "#cc020d",
+          },
+          {
+            label: "Errors In Data",
+            data: [3, 6, 2, 4, 3, 5, 2, 1, 4, 3],
+            backgroundColor: "#fcba03",
           },
         ],
       });
@@ -109,9 +192,11 @@ Chart.register(
           },
         ],
       });
+
+      
     
       //regulatory table data
-      const [regulatoryTableData, setRegulatoryTableData] = useState({
+      const [regulatoryRiskDefaultersData, setRegulatoryRiskDefaultersData] = useState({
         columns: [
           {
             title: "Transaction ID",
@@ -132,6 +217,11 @@ Chart.register(
             title: "% Risk of defaulting",
             dataIndex: "riskscore",
             key: "riskscore",
+          },
+          {
+            title: "Risk Label",
+            dataIndex: "riskLabel",
+            key: "riskLabel",
           },
           {
             title: "Failing Field",
@@ -156,6 +246,7 @@ Chart.register(
             customerID: "EWOURW",
             subschedule: "International Auto Loan",
             riskscore: 66,
+            riskLabel: "High",
             field: "Amount",
             reason: "Exceeds limit",
             remediation: "Reduce amount to within the limit",
@@ -166,6 +257,7 @@ Chart.register(
             customerID: "ETUWJK",
             subschedule: "Student Loan",
             riskscore: 22,
+            riskLabel: "Medium",
             field: "Date",
             reason: "Invalid format",
             remediation: "Correct date format",
@@ -176,6 +268,7 @@ Chart.register(
             customerID: "OWUEFW",
             subschedule: "US Small Business",
             riskscore: 15,
+            riskLabel: "Medium",
             field: "Account Number",
             reason: "Missing value",
             remediation: "Provide account",
@@ -186,6 +279,7 @@ Chart.register(
             customerID: "WEOUGD",
             subschedule: "International Credit Card",
             riskscore: 30,
+            riskLabel: "High",
             field: "Currency",
             reason: "Unsupported currency",
             remediation: "Correct currency",
@@ -196,6 +290,7 @@ Chart.register(
             customerID: "QWIUDW",
             subschedule: "US Auto Loan",
             riskscore: 89,
+            riskLabel: "High",
             field: "Description",
             reason: "Too long",
             remediation: "Shorten description",
@@ -206,6 +301,7 @@ Chart.register(
             customerID: "TJGHID",
             subschedule: "US Other Consumer",
             riskscore: 20,
+            riskLabel: "Medium",
             field: "Amount",
             reason: "Exceeds limit",
             remediation: "Reduce amount to within the limit",
@@ -237,6 +333,11 @@ Chart.register(
             key: "riskscore",
           },
           {
+            title: "Risk Label",
+            dataIndex: "riskLabel",
+            key: "riskLabel",
+          },
+          {
             title: "Failing Field",
             dataIndex: "field",
             key: "field",
@@ -259,6 +360,7 @@ Chart.register(
             customerID: "ABCDEF",
             subschedule: "International Auto Loan",
             riskscore: 80,
+            riskLabel: "Medium",
             field: "Amount",
             reason: "Exceeds limit",
             remediation: "Reduce amount to within the limit",
@@ -269,6 +371,7 @@ Chart.register(
             customerID: "OQURKS",
             subschedule: "US Auto Loan",
             riskscore: 70,
+            riskLabel: "Medium",
             field: "Date",
             reason: "Invalid format",
             remediation: "Correct date format",
@@ -279,6 +382,7 @@ Chart.register(
             customerID: "JOAKEH",
             subschedule: "International Credit Card",
             riskscore: 60,
+            riskLabel: "High",
             field: "Account Number",
             reason: "Missing value",
             remediation: "Provide account number",
@@ -289,6 +393,7 @@ Chart.register(
             customerID: "UTEKXA",
             subschedule: "Student Loan",
             riskscore: 50,
+            riskLabel: "High",
             field: "Currency",
             reason: "Unsupported currency",
             remediation: "Correct currency",
@@ -299,6 +404,7 @@ Chart.register(
             customerID: "OSYFMA",
             subschedule: "International First Lien Mortgage",
             riskscore: 40,
+            riskLabel: "Medium",
             field: "Description",
             reason: "Too long",
             remediation: "Shorten description",
@@ -309,6 +415,7 @@ Chart.register(
             customerID: "BEUGHA",
             subschedule: "International Other Consumer",
             riskscore: 30,
+            riskLabel: "High",
             field: "Amount",
             reason: "Exceeds limit",
             remediation: "Reduce amount to within the limit",
@@ -316,8 +423,8 @@ Chart.register(
         ],
       })
     
-      //filtered transactions table data
-      const [filteredTransactionsTableData, setFilteredTransactionsTableData] = useState({
+      //Errors in data table data
+      const [errorsInDataTableData, setErrorsInDataTableData] = useState({
         columns: [
           {
             title: "Transaction ID",
@@ -333,11 +440,6 @@ Chart.register(
             title: "Product",
             dataIndex: "subschedule",
             key: "subschedule",
-          },
-          {
-            title: "% Risk of defaulting",
-            dataIndex: "riskscore",
-            key: "riskscore",
           },
           {
             title: "Missing Field",
@@ -361,7 +463,6 @@ Chart.register(
             transactionID: 12345671,
             customerID: "ABCDEF",
             subschedule: "International Auto Loan",
-            riskscore: 80,
             field: "Amount",
             reason: "Exceeds limit",
             remediation: "Reduce amount to within the limit",
@@ -371,7 +472,6 @@ Chart.register(
             transactionID: 12345672,
             customerID: "OQURKS",
             subschedule: "US Auto Loan",
-            riskscore: 70,
             field: "Date",
             reason: "Invalid format",
             remediation: "Correct date format",
@@ -381,7 +481,6 @@ Chart.register(
             transactionID: 12345673,
             customerID: "JOAKEH",
             subschedule: "International Credit Card",
-            riskscore: 60,
             field: "Account Number",
             reason: "Missing value",
             remediation: "Provide account number",
@@ -391,7 +490,6 @@ Chart.register(
             transactionID: 12345674,
             customerID: "UTEKXA",
             subschedule: "Student Loan",
-            riskscore: 50,
             field: "Currency",
             reason: "Unsupported currency",
             remediation: "Correct currency",
@@ -401,7 +499,6 @@ Chart.register(
             transactionID: 12345675,
             customerID: "OSYFMA",
             subschedule: "International First Lien Mortgage",
-            riskscore: 40,
             field: "Description",
             reason: "Too long",
             remediation: "Shorten description",
@@ -411,23 +508,12 @@ Chart.register(
             transactionID: 12345676,
             customerID: "BEUGHA",
             subschedule: "International Other Consumer",
-            riskscore: 30,
             field: "Amount",
             reason: "Exceeds limit",
             remediation: "Reduce amount to within the limit",
           },
         ],
       })
-
-    //   setPieChartData({
-    //     labels: [ "Non-Flagged","Flagged for Operational Risk", "Flagged for Regulatory Risk"],
-    //     datasets: [
-    //       {
-    //         data: [data.non_flagged_count, data.operational_flagged_count, data.regulatory_flagged_count],
-    //         backgroundColor: ["#059e40", "#d14c04", "#cc020d"]//green, orange, red
-    //       },
-    //     ],
-    //   });
 
     //   // Set bar chart data
     //   setBarChartData({
@@ -465,7 +551,7 @@ Chart.register(
     //   });
 
     //   //set regulatory table data
-    //   setRegulatoryTableData({
+    //   setRegulatoryRiskDefaultersData({
     //     columns: [
     //       {
     //         title: "Transaction ID",
@@ -547,7 +633,7 @@ Chart.register(
     //   });
 
     //   //set filtered transactions table data
-    //   setFilteredTransactionsTableData({
+    //   setErrorsInDataTableData({
     //     columns: [
     //       {
     //         title: "Transaction ID",
@@ -595,6 +681,10 @@ Chart.register(
     //     })),
     //   });
 
+    const handleDownload = async () => {
+
+    };
+
       return (
         <div style={styles.chartsAndTableContainer}>
               {/* Charts Container */}
@@ -632,30 +722,78 @@ Chart.register(
                   }}
                   className="custom-tabs"
                   >
-                  <TabPane tab="Regulatory Risk Defaulters" key="1">
+                  <TabPane tab={
+                    <span style={{
+                      color: "#059e40"
+                    }}
+                    >
+                    Compliant Data
+                    </span>
+                  }
+                     key="1">
+                      <p>Compliant, low risk data</p>
+                    {/* <Table
+                      columns={compliantData.columns}
+                      dataSource={compliantData.data}
+                      pagination={{ pageSize:5 }} //Enable pagination
+                    /> */}
+                  </TabPane>
+                  <TabPane tab={
+                    <span style={{
+                      color: "#d14c04"
+                    }}
+                    >
+                    Regulatory Risk Defaulters
+                    </span>
+                  }
+                     key="2">
+                      <p>Data that is not compliant with rules</p>
                     <Table
-                      columns={regulatoryTableData.columns}
-                      dataSource={regulatoryTableData.data}
+                      columns={regulatoryRiskDefaultersData.columns}
+                      dataSource={regulatoryRiskDefaultersData.data}
                       pagination={{ pageSize:5 }} //Enable pagination
                     />
                   </TabPane>
-                  <TabPane tab="Potential Defaulters" key="2">
+                  <TabPane tab={
+                    <span style={{
+                      color: "#cc020d"
+                    }}
+                    >
+                    Potential Defaulters
+                    </span>
+                  }
+                     key="3">
+                      <p>Heightened risk compliant data</p>
                     <Table
                       columns={potentialDefaultersTableData.columns}
                       dataSource={potentialDefaultersTableData.data}
                       pagination={{ pageSize:5 }} //Enable pagination
                     />
                   </TabPane>
-                  <TabPane tab="Filtered Data" key="3">
+                  <TabPane tab={
+                    <span style={{
+                      color: "#fcba03"
+                    }}
+                    >
+                    Errors In Data
+                    </span>
+                  }
+                     key="4">
+                      <p>Data with missing attributes according to the rules</p>
                     <Table
-                      columns={filteredTransactionsTableData.columns}
-                      dataSource={filteredTransactionsTableData.data}
+                      columns={errorsInDataTableData.columns}
+                      dataSource={errorsInDataTableData.data}
                       pagination={{ pageSize:5 }} //Enable pagination
                     />
                   </TabPane>
                 </Tabs>
                 }
               </div>
+              
+                      {/* Download Button should only render after data has been processed */}
+                      <button onClick={handleDownload} style={styles.downloadButton}>
+                        Download
+                      </button>
               </div>
       );
 
@@ -721,7 +859,20 @@ Chart.register(
         borderRadius: "10px",
         backgroundColor: "#fff",
         boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-      }
+      },
+      downloadButton: {
+        padding: "10px 20px",
+        border: "none",
+        borderRadius: "5px",
+        backgroundColor: "#059e40",
+        color: "#fff",
+        cursor: "pointer",
+        fontSize: "16px",
+        borderLeft: "1px solid #ddd", // Add a separator between the input and button
+        display: "block", // Ensure the button behaves like a block element
+        marginLeft: "auto", //Button to the right
+        marginRight: "-20px",
+      },
   };
 
   export default ChartsAndTable;
