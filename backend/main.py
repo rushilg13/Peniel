@@ -12,7 +12,7 @@ from fastapi import Request
 import uvicorn
 # import requests
 from fastapi.responses import FileResponse
-# import pymongo
+import pymongo
 import os
 import openai
 from openai import OpenAI
@@ -70,10 +70,13 @@ def home():
     messages.append({"role": "assistant", "content": reply})
     return {"is this homepage" : True, "This is chatgpt's reply": reply}
 
+#### FIX THIS - CORS
 @app.post('/upload-dataset')
 async def upload_excel_parser(file: UploadFile = File(...)):
     file_extension = file.filename.split(".")[-1]
-    file_path = f"C:\\Users\\rushi\\Downloads\\Hackathon\\Saved/{file.filename}"
+    home_directory = os.path.expanduser("~")
+    downloads_folder = os.path.join(home_directory, "Downloads")
+    file_path = f"{downloads_folder}\\Hackathon\\Saved/{file.filename}"  ### FIXED THIS Make dynamic
     with open(file_path, "wb") as f:
         f.write(file.file.read())
         print("file saved.")
@@ -81,7 +84,7 @@ async def upload_excel_parser(file: UploadFile = File(...)):
         # contents = file.file.read()
         # buffer = io.BytesIO(contents)
         # # print(buffer)
-        df = pd.read_excel(f"C:\\Users\\rushi\\Downloads\\Hackathon\\Saved/{file.filename}", engine='openpyxl')
+        df = pd.read_excel(f"{downloads_folder}\\Hackathon\\Saved/{file.filename}", engine='openpyxl')
         print(df)
         # buffer.close()
         file.file.close()
@@ -139,6 +142,8 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
     else:
         message = ""
     if file:
+
+        print("Received file.")
         extracted_text =""
         file_extension = file.filename.split(".")[-1]
         if file_extension == 'txt':
@@ -159,21 +164,10 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
     else:
         extracted_text = ""
     if message != "" and extracted_text != "":
-        messages.append({"role": "user", "content": "These set of rules are extracted from a regulatory dataset, apply these as well on the dataset uploaded" + extracted_text + "\n. " + message},)
+        messages.append({"role": "user", "content": "These set of rules are extracted from a regulatory dataset, apply these as well on the dataset uploaded" + extracted_text + "\n. " + message + ".\nOnly show where the rules failed and why they failed and how to remediate it in 3 bullet points."},)
         chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
         reply = chat.choices[0].message.content
         messages.append({"role": "assistant", "content": reply})
-        messages.append({"role": "user", "content": "Based on your observation, add a field to the dataset inputted by user called 'flag'. After your analysis, for each record add value of 'flag' as 0 if the record aligns with the inputted rules, else 1. And share back the file in .csv format as a response. No other text in response needed. Just the updated dataset with new 'flag' column along with values for each record."},)
-        chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
-        csv = chat.choices[0].message.content
-        print(f"ChatGPT: {reply}")
-        return({"reply":reply, "csv" : csv})
-    elif message == "" and extracted_text != "":
-        messages.append({"role": "user", "content": "These set of rules are extracted from a regulatory dataset, apply these on the dataset uploaded" + extracted_text + ".\nOnly show where the rules failed and why they failed and how to remediate it in 3 bullet points."},)
-        chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
-        reply = chat.choices[0].message.content
-        messages.append({"role": "assistant", "content": reply})
-        # messages.append({"role": "user", "content": "Based on your observation, add a field to the dataset inputted by user called 'flag'. After your analysis, for each record add value of 'flag' as 0 if the record aligns with the inputted rules, else 1. Also add 3 more fields to the dataset 'which field'. And share back the file in .csv format as a response. No other text in response needed. Just the updated dataset with new 'flag' column along with values for each record."},)
         messages.append({"role": "user", "content": "for all rows of data, Based on your observation, create a json file consisting of 'Transaction ID' and the additional fields based on the following rules. add a field to the dataset called 'flag'. Set flag to 0 if all the required fields exist and the values match the rules. Set flag to 1 if all required fields exist but any of the value is not in accordance with the rules. Set flag to 2 if any of the required fields are missing. Share the file in .json format as a response with no other text, Just the output dataset." + "If flag is set to 1, then add a field called 'failing rules' and populate it with all the rules that failed. Add another field called 'Remediation' and populate it with remediation steps for failing rules" + 
         "If flag is set to 2, then add a field called 'Missing Fields' and populate it with the fields that are missing values. Please recehck the data against the mentioned rules to avoid errors at all cost."},)
         chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
@@ -182,7 +176,9 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         _json_ = _json_.replace("`", '')
         _json_ = _json_.replace("json", "")
         # print(_json_)
-        og_df = pd.read_excel("C:\\Users\\rushi\\Downloads\\Hackathon\\Saved\\test.xlsx", engine='openpyxl')
+        home_directory = os.path.expanduser("~")
+        downloads_folder = os.path.join(home_directory, "Downloads")
+        og_df = pd.read_excel(f"{downloads_folder}\\Hackathon\\Saved\\test.xlsx", engine='openpyxl')
         # print(og_df.head())
         og_df["flag"] = np.nan
         og_df["failing rules"] = np.nan
@@ -190,6 +186,7 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         og_df["missing fields"] = np.nan
         # print(og_df.head())
         _json_ = ast.literal_eval(_json_)
+        print(_json_)
         for i in range(len(_json_)):
             # print("\n\n\n" + _json_)
             doc = _json_[i]
@@ -216,7 +213,68 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
             # rem = doc["remediation"]
             # og_df["missing fields"]
         # print(og_df.head())
-        return({"reply":reply, "df" : og_df})
+        csv_buffer = io.StringIO()
+        og_df.to_csv(csv_buffer, index=False)
+        csv_string = csv_buffer.getvalue()
+        return({"reply":reply, "df" : csv_string})
+    
+    elif message == "" and extracted_text != "":
+        messages.append({"role": "user", "content": "These set of rules are extracted from a regulatory dataset, apply these on the dataset uploaded" + extracted_text + ".\nOnly show where the rules failed and why they failed and how to remediate it in 3 bullet points."},)
+        chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
+        reply = chat.choices[0].message.content
+        messages.append({"role": "assistant", "content": reply})
+        # messages.append({"role": "user", "content": "Based on your observation, add a field to the dataset inputted by user called 'flag'. After your analysis, for each record add value of 'flag' as 0 if the record aligns with the inputted rules, else 1. Also add 3 more fields to the dataset 'which field'. And share back the file in .csv format as a response. No other text in response needed. Just the updated dataset with new 'flag' column along with values for each record."},)
+        messages.append({"role": "user", "content": "for all rows of data, Based on your observation, create a json file consisting of 'Transaction ID' and the additional fields based on the following rules. add a field to the dataset called 'flag'. Set flag to 0 if all the required fields exist and the values match the rules. Set flag to 1 if all required fields exist but any of the value is not in accordance with the rules. Set flag to 2 if any of the required fields are missing. Share the file in .json format as a response with no other text, Just the output dataset." + "If flag is set to 1, then add a field called 'failing rules' and populate it with all the rules that failed. Add another field called 'Remediation' and populate it with remediation steps for failing rules" + 
+        "If flag is set to 2, then add a field called 'Missing Fields' and populate it with the fields that are missing values. Please recehck the data against the mentioned rules to avoid errors at all cost."},)
+        chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
+        _json_ = chat.choices[0].message.content
+        # print(f"ChatGPT: {reply}")
+        _json_ = _json_.replace("`", '')
+        _json_ = _json_.replace("json", "")
+        # print(_json_)
+        home_directory = os.path.expanduser("~")
+        downloads_folder = os.path.join(home_directory, "Downloads")
+        og_df = pd.read_excel(f"{downloads_folder}\\Hackathon\\Saved\\test.xlsx", engine='openpyxl')
+
+        # print(og_df.head())
+        og_df["flag"] = np.nan
+        og_df["failing rules"] = np.nan
+        og_df["remediation"] = np.nan
+        og_df["missing fields"] = np.nan
+        # print(og_df.head())
+        _json_ = ast.literal_eval(_json_)
+
+        for i in range(len(_json_)):
+            # print("\n\n\n" + _json_)
+            doc = _json_[i]
+            # print(type(doc))
+            for k, v in doc.items():
+                trans_id = doc["Transaction ID"]
+                df_idx = og_df.index[og_df['Transaction ID'] == trans_id]
+                if k == "flag":
+                    flag = doc["flag"]
+                    og_df.loc[df_idx, ["flag"]] = int(flag)
+                elif k == "failing rules":
+                    og_df.loc[df_idx, ["failing rules"]] = str(v)
+                    # og_df.loc[og_df['Transaction ID'] == trans_id, 'failing rules'] = str(v)
+                    # og_df['failing rules'] = np.where(og_df['Transaction ID'] == trans_id, str(v))
+                elif k == "Remediation":
+                    og_df.loc[df_idx, ["remediation"]] = str(v)
+                    # og_df.loc[og_df['Transaction ID'] == trans_id, 'remediation'] = str(v)
+                    # og_df['remediation'] = np.where(og_df['Transaction ID'] == trans_id, str(v))
+                elif k == "Missing Fields":
+                    og_df.loc[df_idx, ["missing fields"]] = str(v)
+                    # og_df.loc[og_df['Transaction ID'] == trans_id, 'missing fields'] = str(v)
+                    # og_df['missing fields'] = np.where(og_df['Transaction ID'] == trans_id, str(v))
+            # failing_rules = doc["failing rules"]
+            # rem = doc["remediation"]
+            # og_df["missing fields"]
+        # print(og_df.head())
+        csv_buffer = io.StringIO()
+        og_df.to_csv(csv_buffer, index=False)
+        csv_string = csv_buffer.getvalue()
+        return({"reply":reply, "df" : csv_string})
+    ###### FIX THIS #######################333
     elif message != "" and extracted_text == "":
         messages.append({"role": "user", "content": message},)
         chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
@@ -224,12 +282,14 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         messages.append({"role": "assistant", "content": reply})
         print(f"ChatGPT: {reply}")
         return({"reply":reply})
-    return "success"
 
 @app.get('/pie-chart')
 def pie_chart():
     pass
 
+@app.get('/reset-session')
+def reset():
+    pass
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
