@@ -12,7 +12,7 @@ from fastapi import Request
 import uvicorn
 # import requests
 from fastapi.responses import FileResponse
-import pymongo
+#import pymongo
 import os
 import openai
 from openai import OpenAI
