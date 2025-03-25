@@ -49,9 +49,9 @@ app = FastAPI(middleware=middleware, docs_url=None, redoc_url=None)
 client = OpenAI()
 
 # connect to MongoDB
-MONGODB_URI = "mongodb://localhost:27017"
-myclient = pymongo.MongoClient(MONGODB_URI)
-mydb = myclient["chat"]
+# MONGODB_URI = "mongodb://localhost:27017"
+# myclient = pymongo.MongoClient(MONGODB_URI)
+# mydb = myclient["chat"]
 
 messages = [ {"role": "system", "content": "Perform a comprehensive analysis of the provided bank regulatory dataset to ensure compliance with specified rules."} ]
 
@@ -142,6 +142,7 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
     else:
         message = ""
     if file:
+
         print("Received file.")
         extracted_text =""
         file_extension = file.filename.split(".")[-1]
@@ -234,6 +235,7 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         home_directory = os.path.expanduser("~")
         downloads_folder = os.path.join(home_directory, "Downloads")
         og_df = pd.read_excel(f"{downloads_folder}\\Hackathon\\Saved\\test.xlsx", engine='openpyxl')
+
         # print(og_df.head())
         og_df["flag"] = np.nan
         og_df["failing rules"] = np.nan
@@ -241,7 +243,7 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         og_df["missing fields"] = np.nan
         # print(og_df.head())
         _json_ = ast.literal_eval(_json_)
-        print(_json_)
+
         for i in range(len(_json_)):
             # print("\n\n\n" + _json_)
             doc = _json_[i]
@@ -288,7 +290,6 @@ def pie_chart():
 @app.get('/reset-session')
 def reset():
     pass
-
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
