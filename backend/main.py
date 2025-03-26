@@ -22,25 +22,24 @@ import json
 import numpy as np
 import ast
 from sklearn.preprocessing import StandardScaler, LabelEncoder
+from collections import defaultdict
 # from dotenv import load_dotenv
 # Load .env files
 # load_dotenv()
 
 # os.environ["OPENAI_API_KEY"] = "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"
 
-# os.environ["OPENAI_API_KEY"] = "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"
-
 # os.environ["OPENAI_API_KEY"] = "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"
 
-# os.environ["OPENAI_API_KEY"] = "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"
+os.environ["OPENAI_API_KEY"] = "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"
 
-os.environ["OPENAI_API_KEY"] = "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"
+# os.environ["OPENAI_API_KEY"] = "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"
 
 # os.environ["OPENAI_API_KEY"] = "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"
 
 # os.environ["OPENAI_API_KEY"] = "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"
 
-os.environ["OPENAI_API_KEY"] = "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"
+# os.environ["OPENAI_API_KEY"] = "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"
 
 # Set Middleware
 middleware = [ Middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])]
@@ -270,6 +269,7 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         # print(X)
         y_pred = random_model.predict(X)
         zero_flag_df["Risk Score"] = y_pred
+        zero_flag_df["Risk Score"] = zero_flag_df["Risk Score"].astype(int)
         # print(zero_flag_df["Risk Score"])
         # zero_flag_df["Risk_Cluster"] = kmeans_model.predict(zero_flag_df[features])
         zero_flag_df['Risk_Label'] = zero_flag_df['Risk Score'].apply(assign_risk_cluster)
@@ -389,6 +389,7 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         # print(X)
         y_pred = random_model.predict(X)
         zero_flag_df["Risk Score"] = y_pred
+        zero_flag_df["Risk Score"] = zero_flag_df["Risk Score"].astype(int)
         # print(zero_flag_df["Risk Score"])
         # zero_flag_df["Risk_Cluster"] = kmeans_model.predict(zero_flag_df[features])
         zero_flag_df['Risk_Label'] = zero_flag_df['Risk Score'].apply(assign_risk_cluster)
@@ -430,10 +431,79 @@ def pie_chart():
     cat4 = zero_df[(zero_df['flag'] == 2)]
     return {
             "cat1": len(cat1),
-            "cat2": len(cat2),
+            "cat2": len(cat2), # 2
             "cat3": len(cat3),
             "cat4": len(cat4)
             }
+
+@app.get('/bar-graph')
+def bar():
+    dic = defaultdict(list)
+    mapping = {
+        'A.1 - INTERNATIONAL AUTO LOAN' : "IntAuto",
+        'A.2 - US AUTO LOAN' : "Auto",
+        'A.3 - INTERNATIONAL CREDIT CARD' : "IntCard",
+        'A.4 - INTERNATIONAL HOME EQUITY' : "IntHE",
+        'A.5 - INTERNATIONAL FIRST LIEN MORTGAGE' : "IntFM",
+        'A.6 - INTERNATIONAL OTHER CONSUMER SCHEDULE' : "IntlOthCons",
+        'A.7 - US OTHER CONSUMER' : "USOthCons",
+        'A.8 - INTERNATIONAL SMALL BUSINESS' : "IntSB",
+        'A.9 - US SMALL BUSINESS' : "USSB",
+        'A.10 - STUDENT LOAN' : "Student"
+    }
+    schedules = ['A.1 - INTERNATIONAL AUTO LOAN', 'A.2 - US AUTO LOAN', 'A.3 - INTERNATIONAL CREDIT CARD', 'A.4 - INTERNATIONAL HOME EQUITY', 'A.5 - INTERNATIONAL FIRST LIEN MORTGAGE', 'A.6 - INTERNATIONAL OTHER CONSUMER SCHEDULE', 'A.7 - US OTHER CONSUMER', 'A.8 - INTERNATIONAL SMALL BUSINESS', 'A.9 - US SMALL BUSINESS', 'A.10 - STUDENT LOAN']
+
+    home_directory = os.path.expanduser("~")
+    downloads_folder = os.path.join(home_directory, "Downloads")
+    zero_flag_df = pd.read_excel(f"{downloads_folder}\\Hackathon\\Saved\\zero_flag_test.xlsx", engine='openpyxl')
+    og_df = pd.read_excel(f"{downloads_folder}\\Hackathon\\Saved\\test.xlsx", engine='openpyxl')
+    compliant_df = zero_flag_df[(zero_flag_df['flag'] == 0) & (zero_flag_df['Risk_Label'] == "Low Risk")]
+    reg_risk_def = og_df[(og_df['flag'] == 1)]
+    pot_def = zero_flag_df[(zero_flag_df['flag'] == 0) & (zero_flag_df['Risk_Label'] != "Low Risk")]
+    errs_df = og_df[(og_df['flag'] == 2)]
+    for schedule in schedules:
+        sch = mapping[schedule]
+        dic[schedule].append(int((compliant_df['PORTFOLIO_ID'] == sch).sum()))
+        dic[schedule].append(int((reg_risk_def['PORTFOLIO_ID'] == sch).sum()))
+        dic[schedule].append(int((pot_def['PORTFOLIO_ID'] == sch).sum()))
+        dic[schedule].append(int((errs_df['PORTFOLIO_ID'] == sch).sum()))
+    return({
+            "data" : dic
+        })
+
+@app.get('/line-graph')
+def line():
+    dic = defaultdict(list)
+    mapping = {
+        'A.1 - INTERNATIONAL AUTO LOAN' : "IntAuto",
+        'A.2 - US AUTO LOAN' : "Auto",
+        'A.3 - INTERNATIONAL CREDIT CARD' : "IntCard",
+        'A.4 - INTERNATIONAL HOME EQUITY' : "IntHE",
+        'A.5 - INTERNATIONAL FIRST LIEN MORTGAGE' : "IntFM",
+        'A.6 - INTERNATIONAL OTHER CONSUMER SCHEDULE' : "IntlOthCons",
+        'A.7 - US OTHER CONSUMER' : "USOthCons",
+        'A.8 - INTERNATIONAL SMALL BUSINESS' : "IntSB",
+        'A.9 - US SMALL BUSINESS' : "USSB",
+        'A.10 - STUDENT LOAN' : "Student"
+    }
+    schedules = ['A.1 - INTERNATIONAL AUTO LOAN', 'A.2 - US AUTO LOAN', 'A.3 - INTERNATIONAL CREDIT CARD', 'A.4 - INTERNATIONAL HOME EQUITY', 'A.5 - INTERNATIONAL FIRST LIEN MORTGAGE', 'A.6 - INTERNATIONAL OTHER CONSUMER SCHEDULE', 'A.7 - US OTHER CONSUMER', 'A.8 - INTERNATIONAL SMALL BUSINESS', 'A.9 - US SMALL BUSINESS', 'A.10 - STUDENT LOAN']
+
+    home_directory = os.path.expanduser("~")
+    downloads_folder = os.path.join(home_directory, "Downloads")
+    zero_flag_df = pd.read_excel(f"{downloads_folder}\\Hackathon\\Saved\\zero_flag_test.xlsx", engine='openpyxl')
+    for schedule in schedules:
+        sch = mapping[schedule]
+        filtered_df = zero_flag_df[(zero_flag_df['PORTFOLIO_ID'] == sch)]
+        total_filtered_rows = len(filtered_df)
+        sum_risk_score = int(filtered_df["Risk Score"].sum())
+        if total_filtered_rows > 0:
+            avg_risk_score_for_sub_schedule = sum_risk_score//total_filtered_rows
+        else:
+            avg_risk_score_for_sub_schedule = 0
+        dic[schedule] = avg_risk_score_for_sub_schedule
+    return({
+            "data" : dic
+        })
 
 @app.get('/tables')
 def tables():
@@ -450,10 +520,10 @@ def tables():
     pot_def_json = pot_def.to_json(orient='records')
     errs_df_json = errs_df.to_json(orient='records')
     return({
-        "compliant_df_json":compliant_df_json, 
-        "reg_risk_def_json":reg_risk_def_json, 
-        "pot_def_json":pot_def_json, 
-        "errs_df_json":errs_df_json
+        "compliant_df_json":compliant_df_json, # 0
+        "reg_risk_def_json":reg_risk_def_json,  # 1
+        "pot_def_json":pot_def_json,  # 2
+        "errs_df_json":errs_df_json # 1
         })
 
 @app.get('/reset-session')
