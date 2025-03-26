@@ -4,6 +4,7 @@ import { Pie, Bar, Line } from "react-chartjs-2"; // Import Line chart
 import { Chart, ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement } from "chart.js";
 import { Table, Tabs } from "antd"; // Import Ant Design Table
 import "./ChartsAndTable.css";
+import { saveAs } from "file-saver";
 
 // Register Chart.js components
 Chart.register(
@@ -22,29 +23,126 @@ Chart.register(
 
   const ChartsAndTable = ({ res }) => {
 
-    //Compliant data - flag 0, low risk, green
-    //Regulatory Risk Defaulters - flag 1, orange
-    //Potential Defaulters - flag 0, high and medium risk, red
-    //Errors in Data - flag 2, yellow
-    const data=res?.data||{};
-    //get transactions having flag 0, 1, 2
-    const [flag0Data, setFlag0Data] = useState([]);
+    const [pieChartData, setPieChartData] = useState({
+      labels: [], // Empty labels
+      datasets: [
+        {
+          data: [], // Empty data array
+          backgroundColor: [], // Empty background colors
+        },
+      ],
+    });
 
-  // Function to filter transactions with flag 0
-  const filterFlag0Data = () => {
-    if (res?.transactions) {
-      const filteredData = res.data.transactions.filter(
-        (transaction) => transaction.flag === 0
-      );
-      setFlag0Data(filteredData);
-      console.log("Filtered Data with Flag 0:", filteredData);
-    }
-  };
+    const [regulatoryRiskDefaultersData, setRegulatoryRiskDefaultersData] = useState({
+    });
 
-  // Automatically filter data when `res` changes
-  useEffect(() => {
-    filterFlag0Data();
-  }, [res]);
+    useEffect(() => {
+      const fetchPieChartData = async () => {
+        try {
+          const response = await axios.get("http://127.0.0.1:8000/pie-chart");
+          const data = response.data;
+  
+          // Update pie chart data
+          setPieChartData({
+            labels: ["Compliant Data", "Regulatory Risk Defaulters", "Potential Defaulters", "Errors In Data"],
+            datasets: [
+              {
+                data: [
+                  data?.cat1 || 0,
+                  data?.cat3 || 0,
+                  data?.cat2 || 0,
+                  data?.cat4 || 0,
+                ],
+                backgroundColor: ["#059e40", "#d14c04", "#cc020d", "#fcba03"], // Green, Orange, Red, Yellow
+              },
+            ],
+          });
+        } catch (error) {
+          console.error("Error fetching pie chart data:", error);
+        }
+      };
+
+      const fetchTableData = async () => {
+        try {
+          const response = await axios.get("http://127.0.0.1:8000/tables");
+          const data = response.data;
+
+          const compliantData=data.compliant_df_json || [];
+          const regRiskDefaulters=JSON.parse(data.reg_risk_def_json || "[]");
+          const potentialDefaulters=JSON.parse(data.pot_def_json || "[]");
+          const errorsInData=data.errs_df_json || [];
+
+          console.log("regRiskDefaulters: "+regRiskDefaulters);
+
+          if (Array.isArray(regRiskDefaulters)) {
+            // Map the transactions into the required format for the table
+            const reg_risk_data = regRiskDefaulters.map((transaction, index) => {
+              let failingRules = transaction["failing rules"];
+              let remediation = transaction["remediation"];
+              if (typeof failingRules === "string") {
+                try {
+                  failingRules = JSON.parse(failingRules.replace(/'/g, '"'));
+                } catch (error) {
+                  console.error("Error parsing failing rules:", error);
+                  failingRules = [];
+                }
+              }
+
+              if (typeof remediation === "string") {
+                try {
+                  remediation = JSON.parse(remediation.replace(/'/g, '"'));
+                } catch (error) {
+                  console.error("Error parsing remediation:", error);
+                  remediation = [];
+                }
+              }
+
+              return {
+              key: index + 1, // Unique key for each row
+              transactionID: transaction["Transaction ID"],
+              subschedule: transaction["PORTFOLIO_ID"],
+              field: Array.isArray(failingRules) ? failingRules.join(", ") : failingRules, // Join array elements with a comma
+              reason: Array.isArray(remediation) ? remediation.join(", ") : remediation, // Join array elements with a comma
+              };
+            });
+  
+          setRegulatoryRiskDefaultersData({
+            columns: [
+              {
+                title: "Transaction ID",
+                dataIndex: "transactionID",
+                key: "transactionID",
+              },
+              {
+                title: "Product",
+                dataIndex: "subschedule",
+                key: "subschedule",
+              },
+              {
+                title: "Failing Rule(s)",
+                dataIndex: "field",
+                key: "field",
+              },
+              {
+                title: "Remediation",
+                dataIndex: "reason",
+                key: "reason",
+              },
+            ],
+            data: reg_risk_data,
+          });
+        } else {
+          console.error("regRiskDefaulters is not an array:", regRiskDefaulters);
+        }
+    
+        } catch (error) {
+          console.error("Error fetching table data:", error);
+        }
+      };
+  
+      fetchPieChartData(); // Call the async function
+      fetchTableData();
+    }, []);
 
     //segregate flag 0 transactions into compliant_transactions or potentialDefaulters_transactions based on risk label
     const [compliant_transactions, setCompliant_transactions] = useState();
@@ -80,34 +178,6 @@ Chart.register(
     //   })),  
     // })
     
-    const [pieChartData, setPieChartData] = useState({
-      labels: [], // Empty labels
-      datasets: [
-        {
-          data: [], // Empty data array
-          backgroundColor: [], // Empty background colors
-        },
-      ],
-    });
-
-    // Update pieChartData when `res` changes
-    // useEffect(() => {
-    //   if (res) {
-    //     setPieChartData({
-    //       labels: [ "Compliant Data","Regulatory Risk Defaulters", "Potential Defaulters", "Errors In Data"],
-    //       datasets: [
-    //         {
-    //           data: [
-    //             res.non_flagged_count || 0,
-    //             res.operational_flagged_count || 0,
-    //             res.regulatory_flagged_count || 0,
-    //           ],
-    //           backgroundColor: ["#059e40", "#d14c04", "#cc020d"], // Green, Orange, Red
-    //         },
-    //       ],
-    //     });
-    //   }
-    // }, [res]); // Dependency array ensures this runs only when `res` changes
 
 
     const pieChartOptions = {
@@ -192,122 +262,6 @@ Chart.register(
           },
         ],
       });
-
-      
-    
-      //regulatory table data
-      const [regulatoryRiskDefaultersData, setRegulatoryRiskDefaultersData] = useState({
-        columns: [
-          {
-            title: "Transaction ID",
-            dataIndex: "transactionID",
-            key: "transactionID",
-          },
-          {
-            title: "Customer ID",
-            dataIndex: "customerID",
-            key: "customerID",
-          },
-          {
-            title: "Product",
-            dataIndex: "subschedule",
-            key: "subschedule",
-          },
-          {
-            title: "% Risk of defaulting",
-            dataIndex: "riskscore",
-            key: "riskscore",
-          },
-          {
-            title: "Risk Label",
-            dataIndex: "riskLabel",
-            key: "riskLabel",
-          },
-          {
-            title: "Failing Field",
-            dataIndex: "field",
-            key: "field",
-          },
-          {
-            title: "Reason for Failure",
-            dataIndex: "reason",
-            key: "reason",
-          },
-          {
-            title: "Steps for Remediation",
-            dataIndex: "remediation",
-            key: "remediation",
-          },
-        ],
-        data: [
-          {
-            key: "1",
-            transactionID: 66996885,
-            customerID: "EWOURW",
-            subschedule: "International Auto Loan",
-            riskscore: 66,
-            riskLabel: "High",
-            field: "Amount",
-            reason: "Exceeds limit",
-            remediation: "Reduce amount to within the limit",
-          },
-          {
-            key: "2",
-            transactionID: 66996886,
-            customerID: "ETUWJK",
-            subschedule: "Student Loan",
-            riskscore: 22,
-            riskLabel: "Medium",
-            field: "Date",
-            reason: "Invalid format",
-            remediation: "Correct date format",
-          },
-          {
-            key: "3",
-            transactionID: 66996887,
-            customerID: "OWUEFW",
-            subschedule: "US Small Business",
-            riskscore: 15,
-            riskLabel: "Medium",
-            field: "Account Number",
-            reason: "Missing value",
-            remediation: "Provide account",
-          },
-          {
-            key: "4",
-            transactionID: 66996888,
-            customerID: "WEOUGD",
-            subschedule: "International Credit Card",
-            riskscore: 30,
-            riskLabel: "High",
-            field: "Currency",
-            reason: "Unsupported currency",
-            remediation: "Correct currency",
-          },
-          {
-            key: "5",
-            transactionID: 66996889,
-            customerID: "QWIUDW",
-            subschedule: "US Auto Loan",
-            riskscore: 89,
-            riskLabel: "High",
-            field: "Description",
-            reason: "Too long",
-            remediation: "Shorten description",
-          },
-          {
-            key: "6",
-            transactionID: 66996885,
-            customerID: "TJGHID",
-            subschedule: "US Other Consumer",
-            riskscore: 20,
-            riskLabel: "Medium",
-            field: "Amount",
-            reason: "Exceeds limit",
-            remediation: "Reduce amount to within the limit",
-          },
-        ],
-      })
     
       //potential defaulters table data
       const [potentialDefaultersTableData, setPotentialDefaultersTableData] = useState({
@@ -551,38 +505,7 @@ Chart.register(
     //   });
 
     //   //set regulatory table data
-    //   setRegulatoryRiskDefaultersData({
-    //     columns: [
-    //       {
-    //         title: "Transaction ID",
-    //         dataIndex: "transactionID",
-    //         key: "transactionID",
-    //       },
-    //       {
-    //         title: "Subschedule",
-    //         dataIndex: "subschedule",
-    //         key: "subschedule",
-    //       },
-    //       {
-    //         title: "Failing Field",
-    //         dataIndex: "field",
-    //         key: "field",
-    //       },
-    //       {
-    //         title: "Reason for Failure",
-    //         dataIndex: "reason",
-    //         key: "reason",
-    //       },
-    //     ],
-    //     data: data.regulatory_risk_transactions.map((transaction, index) => ({
-    //       key: index + 1, // Unique key for each row
-    //       transactionID: transaction.transactionID,
-    //       subschedule: transaction.subschedule,
-    //       field: transaction.field,
-    //       reason: transaction.reason,
-    //     })),
-    //   });
-
+      
     //   //set potential defaulters table data
     //   setPotentialDefaultersTableData({
     //     columns: [
@@ -683,6 +606,36 @@ Chart.register(
 
     const handleDownload = async () => {
 
+      console.log(res);
+      if (!res ) {
+        console.error("No data available to download.");
+        return;
+      }
+    
+        
+      try {
+        const rows = res.split("\n").map((row) => row.split(","));
+        const headers = rows[0]; // First row contains headers
+        const data = rows.slice(1); // Remaining rows contain data
+
+        // Convert the parsed data back into CSV format
+        const csvContent = [headers.join(","), ...data.map((row) => row.join(","))].join("\n");
+        // Create a Blob object for the CSV data
+        const blob = new Blob([csvContent], { type: "text/csv" });
+    
+        // Create a download link
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "transactions_data.csv"; // File name for the downloaded CSV
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    
+        console.log("CSV file downloaded successfully.");
+      } catch (error) {
+        console.error("Error generating CSV file:", error);
+      }
     };
 
       return (

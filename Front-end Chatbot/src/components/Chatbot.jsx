@@ -3,7 +3,6 @@ import axios from "axios";
 import ChartsAndTable from "./ChartsAndTable";
 import WelcomePage from "./WelcomePage";
 import attachLogo from "../assets/images/attachLogo.png";
-import sampleCSV from "../assets/data/sample.csv"; // Path to your CSV file
 
 
 const Chatbot = () => {
@@ -42,7 +41,8 @@ const Chatbot = () => {
       setAttachedFile(null); // Clear the attached file after sending
       if (res.data.df)
         setResults(res.data.df);
-      console.log("Reply:", res.data.reply);
+      console.log("Reply:", res.data);
+      console.log("Reply:", res.data.df);
     } catch (error) {
       console.error("Error sending message:", error);
       setConversation((prev) => [
@@ -159,12 +159,13 @@ const Chatbot = () => {
           Reset Session
         </button>
       </div>
-      {results && results.length > 0 && results.data.df? ( 
+
+      {results && results.length > 0 ? ( 
+
         <ChartsAndTable res={results} />
        ) : (
         <WelcomePage />
-      )}
-      
+      )} 
     </div>
   );
 };
