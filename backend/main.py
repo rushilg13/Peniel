@@ -226,7 +226,67 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         og_df.to_csv(csv_buffer, index=False)
         csv_string = csv_buffer.getvalue()
         og_df.to_excel(f"{downloads_folder}\\Hackathon\\Saved\\test.xlsx", index=False, engine='openpyxl')
-        return({"reply":reply, "df" : csv_string})
+        with open(os.getcwd() + "\\Models\\random_forest_model.pkl", "rb") as file:
+            random_model = pickle.load(file)
+        with open(os.getcwd() + "\\Models\\kmeans_model.pkl", "rb") as file:
+            kmeans_model = pickle.load(file)
+        zero_flag_df = og_df[(og_df['flag'] == 0)]
+        zero_flag_df["Probability of Default (PD)"] = np.random.uniform(0.01, 0.20)
+        zero_flag_df["Loss Given Default (LGD)"] = np.random.uniform(0.4, 0.7)
+        zero_flag_df['Expected Loss (EL)'] = zero_flag_df['Probability of Default (PD)'] * zero_flag_df['Loss Given Default (LGD)'] * zero_flag_df['$ Unpaid Principal Balance at Charge-off']
+        zero_flag_df["$ Unpaid Principal Balance at Charge-off"] = np.random.uniform(0.4, 0.7)
+        for index, row in zero_flag_df.iterrows():
+            # row["Probability of Default (PD)"] = np.random.uniform(0.01, 0.20)
+            # row["Loss Given Default (LGD)"] = np.random.uniform(0.4, 0.7)
+            # zero_flag_df.at[index, 'Expected Loss (EL)'] = row['Probability of Default (PD)'] * row['Loss Given Default (LGD)'] * row['$ Unpaid Principal Balance at Charge-off']
+            risk_weights = {"Cash & Govt Bonds": 0.00, "Mortgages": 0.50, "Retail Loans": 0.75, "Unsecured Business Loans": 1.00,"Corporate & SME Loans": 1.50}
+            loan_type = row.get("Loan Type", "Retail Loans")
+            risk_weight = risk_weights.get(loan_type, 0.75)
+            # row["$ Unpaid Principal Balance at Charge-off"] = row["$ Unpaid Principal Balance at Charge-off"] * risk_weight
+            if row['Percent Loss Severity (3 month Lagged)'] == 0:
+                zero_flag_df.at[index, 'Percent Loss Severity (3 month Lagged)'] = np.random.uniform(0.3, 0.6)
+            if row["$ Net charge-offs"] == 0:
+                zero_flag_df.at[index, "$ Net charge-offs"] = row["Expected Loss (EL)"] * 0.5
+            if row["$ Recoveries"] == 0:
+                zero_flag_df.at[index, "$ Recoveries"] = row["Loss Given Default (LGD)"] * row["$ Unpaid Principal Balance at Charge-off"]
+        # Encode categorical variables
+        categorical_columns = zero_flag_df.select_dtypes(include=['object']).columns
+        label_encoders = {}
+        for col in categorical_columns:
+            le = LabelEncoder()
+            zero_flag_df[col] = le.fit_transform(zero_flag_df[col])
+            label_encoders[col] = le
+        # Fill missing values with mean for numerical features
+        zero_flag_df.fillna(zero_flag_df.mean(), inplace=True)
+        features = [
+            "Probability of Default (PD)", "Loss Given Default (LGD)", "Expected Loss (EL)",
+            "Risk-Weighted Asset (RWA)", "$ Unpaid Principal Balance at Charge-off", "Percent Loss Severity (3 month Lagged)", "$ Net Charge-offs", "$ Recoveries"
+        ]
+        target = "High_Risk_Transaction_Score"
+        # Scale the features
+        scaler = StandardScaler()
+        zero_flag_df[features] = scaler.fit_transform(zero_flag_df[features])
+        X = zero_flag_df[features]
+        # print(X)
+        y_pred = random_model.predict(X)
+        zero_flag_df["Risk Score"] = y_pred
+        # print(zero_flag_df["Risk Score"])
+        # zero_flag_df["Risk_Cluster"] = kmeans_model.predict(zero_flag_df[features])
+        zero_flag_df['Risk_Label'] = zero_flag_df['Risk Score'].apply(assign_risk_cluster)
+        # print(zero_flag_df["Risk_Label"])
+        csv_buffer1 = io.StringIO()
+        zero_flag_df.to_csv(csv_buffer1, index=False)
+        ml_output_csv_string = csv_buffer1.getvalue()
+        zero_flag_df.to_excel(f"{downloads_folder}\\Hackathon\\Saved\\zero_flag_test.xlsx", index=False, engine='openpyxl')
+        # compliant_df = zero_flag_df[(zero_flag_df['flag'] == 0) & (zero_flag_df['Risk_Label'] == "Low Risk")]
+        # reg_risk_def = og_df[(og_df['flag'] == 1)]
+        # pot_def = zero_flag_df[(zero_flag_df['flag'] == 0) & (zero_flag_df['Risk_Label'] != "Low Risk")]
+        # errs_df = og_df[(og_df['flag'] == 2)]
+        # compliant_df_json = compliant_df.to_json(orient='records')
+        # reg_risk_def_json = reg_risk_def.to_json(orient='records')
+        # pot_def_json = pot_def.to_json(orient='records')
+        # errs_df_json = errs_df.to_json(orient='records')
+        return({"reply":reply, "df" : csv_string, "ml_out" : ml_output_csv_string})
     
     elif message == "" and extracted_text != "":
         messages.append({"role": "user", "content": "These set of rules are extracted from a regulatory dataset, apply these on the dataset uploaded" + extracted_text + ".\nOnly show where the rules failed and why they failed and how to remediate it in 3 bullet points."},)
@@ -337,6 +397,14 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         zero_flag_df.to_csv(csv_buffer1, index=False)
         ml_output_csv_string = csv_buffer1.getvalue()
         zero_flag_df.to_excel(f"{downloads_folder}\\Hackathon\\Saved\\zero_flag_test.xlsx", index=False, engine='openpyxl')
+        # compliant_df = zero_flag_df[(zero_flag_df['flag'] == 0) & (zero_flag_df['Risk_Label'] == "Low Risk")]
+        # reg_risk_def = og_df[(og_df['flag'] == 1)]
+        # pot_def = zero_flag_df[(zero_flag_df['flag'] == 0) & (zero_flag_df['Risk_Label'] != "Low Risk")]
+        # errs_df = og_df[(og_df['flag'] == 2)]
+        # compliant_df_json = compliant_df.to_json(orient='records')
+        # reg_risk_def_json = reg_risk_def.to_json(orient='records')
+        # pot_def_json = pot_def.to_json(orient='records')
+        # errs_df_json = errs_df.to_json(orient='records')
         return({"reply":reply, "df" : csv_string, "ml_out" : ml_output_csv_string})
     ###### FIX THIS #######################333
     elif message != "" and extracted_text == "":
@@ -360,11 +428,33 @@ def pie_chart():
     cat2 = zero_df[(zero_df['flag'] == 0) & (zero_df['Risk_Label'] != "Low Risk")]
     cat3 = zero_df[(zero_df['flag'] == 1)]
     cat4 = zero_df[(zero_df['flag'] == 2)]
-    return {"cat1": len(cat1),
+    return {
+            "cat1": len(cat1),
             "cat2": len(cat2),
             "cat3": len(cat3),
             "cat4": len(cat4)
             }
+
+@app.get('/tables')
+def tables():
+    home_directory = os.path.expanduser("~")
+    downloads_folder = os.path.join(home_directory, "Downloads")
+    zero_flag_df = pd.read_excel(f"{downloads_folder}\\Hackathon\\Saved\\zero_flag_test.xlsx", engine='openpyxl')
+    og_df = pd.read_excel(f"{downloads_folder}\\Hackathon\\Saved\\test.xlsx", engine='openpyxl')
+    compliant_df = zero_flag_df[(zero_flag_df['flag'] == 0) & (zero_flag_df['Risk_Label'] == "Low Risk")]
+    reg_risk_def = og_df[(og_df['flag'] == 1)]
+    pot_def = zero_flag_df[(zero_flag_df['flag'] == 0) & (zero_flag_df['Risk_Label'] != "Low Risk")]
+    errs_df = og_df[(og_df['flag'] == 2)]
+    compliant_df_json = compliant_df.to_json(orient='records')
+    reg_risk_def_json = reg_risk_def.to_json(orient='records')
+    pot_def_json = pot_def.to_json(orient='records')
+    errs_df_json = errs_df.to_json(orient='records')
+    return({
+        "compliant_df_json":compliant_df_json, 
+        "reg_risk_def_json":reg_risk_def_json, 
+        "pot_def_json":pot_def_json, 
+        "errs_df_json":errs_df_json
+        })
 
 @app.get('/reset-session')
 def reset():
@@ -372,3 +462,8 @@ def reset():
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
+
+# falg = 2 -- erros in data
+# flag = 0 -- risk medium high -- pot defaulters
+# flag = 1 - reg risk def
+# flag = 0 - risk low -- compliant 
