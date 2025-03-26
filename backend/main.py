@@ -4,7 +4,7 @@ import csv
 import io
 import pandas as pd
 import openpyxl
-# import pickle
+import pickle
 from starlette.responses import Response
 from fastapi.middleware import Middleware
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +21,7 @@ import fitz
 import json
 import numpy as np
 import ast
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 # from dotenv import load_dotenv
 # Load .env files
 # load_dotenv()
@@ -33,7 +34,7 @@ import ast
 
 # os.environ["OPENAI_API_KEY"] = "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"
 
-# os.environ["OPENAI_API_KEY"] = "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"
+os.environ["OPENAI_API_KEY"] = "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"
 
 # os.environ["OPENAI_API_KEY"] = "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"
 
@@ -52,6 +53,14 @@ client = OpenAI()
 # MONGODB_URI = "mongodb://localhost:27017"
 # myclient = pymongo.MongoClient(MONGODB_URI)
 # mydb = myclient["chat"]
+
+def assign_risk_cluster(score):
+    if score <= 33:
+        return "Low Risk"
+    elif score <= 66:
+        return "Medium Risk"
+    else:
+        return "High Risk"
 
 messages = [ {"role": "system", "content": "Perform a comprehensive analysis of the provided bank regulatory dataset to ensure compliance with specified rules."} ]
 
@@ -98,8 +107,8 @@ async def upload_excel_parser(file: UploadFile = File(...)):
                 res[col] = dict(data[col])[str(i)]
             result.append(res)
         # print(str(result))
-        with open("input_data.txt", 'w', encoding='unicode-escape') as f:
-            f.write(str(result))
+        # with open("input_data.txt", 'w', encoding='unicode-escape') as f:
+        #     f.write(str(result))
         
         messages.append({"role": "user", "content": "This is the dataset in json format:" + str(result) + "\n wait for rules to be provided. Just reply with 'Waiting for rules to be entered.' "},)
         chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
@@ -169,7 +178,7 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         reply = chat.choices[0].message.content
         messages.append({"role": "assistant", "content": reply})
         messages.append({"role": "user", "content": "for all rows of data, Based on your observation, create a json file consisting of 'Transaction ID' and the additional fields based on the following rules. add a field to the dataset called 'flag'. Set flag to 0 if all the required fields exist and the values match the rules. Set flag to 1 if all required fields exist but any of the value is not in accordance with the rules. Set flag to 2 if any of the required fields are missing. Share the file in .json format as a response with no other text, Just the output dataset." + "If flag is set to 1, then add a field called 'failing rules' and populate it with all the rules that failed. Add another field called 'Remediation' and populate it with remediation steps for failing rules" + 
-        "If flag is set to 2, then add a field called 'Missing Fields' and populate it with the fields that are missing values. Please recehck the data against the mentioned rules to avoid errors at all cost."},)
+        "If flag is set to 2, then add a field called 'Missing Fields' and populate it with the fields that are missing values. Please recheck the data against the mentioned rules to avoid errors at all cost."},)
         chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
         _json_ = chat.choices[0].message.content
         # print(f"ChatGPT: {reply}")
@@ -216,6 +225,7 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         csv_buffer = io.StringIO()
         og_df.to_csv(csv_buffer, index=False)
         csv_string = csv_buffer.getvalue()
+        og_df.to_excel(f"{downloads_folder}\\Hackathon\\Saved\\test.xlsx", index=False, engine='openpyxl')
         return({"reply":reply, "df" : csv_string})
     
     elif message == "" and extracted_text != "":
@@ -225,7 +235,7 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         messages.append({"role": "assistant", "content": reply})
         # messages.append({"role": "user", "content": "Based on your observation, add a field to the dataset inputted by user called 'flag'. After your analysis, for each record add value of 'flag' as 0 if the record aligns with the inputted rules, else 1. Also add 3 more fields to the dataset 'which field'. And share back the file in .csv format as a response. No other text in response needed. Just the updated dataset with new 'flag' column along with values for each record."},)
         messages.append({"role": "user", "content": "for all rows of data, Based on your observation, create a json file consisting of 'Transaction ID' and the additional fields based on the following rules. add a field to the dataset called 'flag'. Set flag to 0 if all the required fields exist and the values match the rules. Set flag to 1 if all required fields exist but any of the value is not in accordance with the rules. Set flag to 2 if any of the required fields are missing. Share the file in .json format as a response with no other text, Just the output dataset." + "If flag is set to 1, then add a field called 'failing rules' and populate it with all the rules that failed. Add another field called 'Remediation' and populate it with remediation steps for failing rules" + 
-        "If flag is set to 2, then add a field called 'Missing Fields' and populate it with the fields that are missing values. Please recehck the data against the mentioned rules to avoid errors at all cost."},)
+        "If flag is set to 2, then add a field called 'Missing Fields' and populate it with the fields that are missing values. Please recheck the data against the mentioned rules to avoid errors at all cost. Errors are not expected, make sure you provide accurate data in one go."},)
         chat = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
         _json_ = chat.choices[0].message.content
         # print(f"ChatGPT: {reply}")
@@ -242,6 +252,7 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         og_df["remediation"] = np.nan
         og_df["missing fields"] = np.nan
         # print(og_df.head())
+        print(_json_)
         _json_ = ast.literal_eval(_json_)
 
         for i in range(len(_json_)):
@@ -273,7 +284,60 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         csv_buffer = io.StringIO()
         og_df.to_csv(csv_buffer, index=False)
         csv_string = csv_buffer.getvalue()
-        return({"reply":reply, "df" : csv_string})
+        og_df.to_excel(f"{downloads_folder}\\Hackathon\\Saved\\test.xlsx", index=False, engine='openpyxl')
+        with open(os.getcwd() + "\\Models\\random_forest_model.pkl", "rb") as file:
+            random_model = pickle.load(file)
+        with open(os.getcwd() + "\\Models\\kmeans_model.pkl", "rb") as file:
+            kmeans_model = pickle.load(file)
+        zero_flag_df = og_df[(og_df['flag'] == 0)]
+        zero_flag_df["Probability of Default (PD)"] = np.random.uniform(0.01, 0.20)
+        zero_flag_df["Loss Given Default (LGD)"] = np.random.uniform(0.4, 0.7)
+        zero_flag_df['Expected Loss (EL)'] = zero_flag_df['Probability of Default (PD)'] * zero_flag_df['Loss Given Default (LGD)'] * zero_flag_df['$ Unpaid Principal Balance at Charge-off']
+        zero_flag_df["$ Unpaid Principal Balance at Charge-off"] = np.random.uniform(0.4, 0.7)
+        for index, row in zero_flag_df.iterrows():
+            # row["Probability of Default (PD)"] = np.random.uniform(0.01, 0.20)
+            # row["Loss Given Default (LGD)"] = np.random.uniform(0.4, 0.7)
+            # zero_flag_df.at[index, 'Expected Loss (EL)'] = row['Probability of Default (PD)'] * row['Loss Given Default (LGD)'] * row['$ Unpaid Principal Balance at Charge-off']
+            risk_weights = {"Cash & Govt Bonds": 0.00, "Mortgages": 0.50, "Retail Loans": 0.75, "Unsecured Business Loans": 1.00,"Corporate & SME Loans": 1.50}
+            loan_type = row.get("Loan Type", "Retail Loans")
+            risk_weight = risk_weights.get(loan_type, 0.75)
+            # row["$ Unpaid Principal Balance at Charge-off"] = row["$ Unpaid Principal Balance at Charge-off"] * risk_weight
+            if row['Percent Loss Severity (3 month Lagged)'] == 0:
+                zero_flag_df.at[index, 'Percent Loss Severity (3 month Lagged)'] = np.random.uniform(0.3, 0.6)
+            if row["$ Net charge-offs"] == 0:
+                zero_flag_df.at[index, "$ Net charge-offs"] = row["Expected Loss (EL)"] * 0.5
+            if row["$ Recoveries"] == 0:
+                zero_flag_df.at[index, "$ Recoveries"] = row["Loss Given Default (LGD)"] * row["$ Unpaid Principal Balance at Charge-off"]
+        # Encode categorical variables
+        categorical_columns = zero_flag_df.select_dtypes(include=['object']).columns
+        label_encoders = {}
+        for col in categorical_columns:
+            le = LabelEncoder()
+            zero_flag_df[col] = le.fit_transform(zero_flag_df[col])
+            label_encoders[col] = le
+        # Fill missing values with mean for numerical features
+        zero_flag_df.fillna(zero_flag_df.mean(), inplace=True)
+        features = [
+            "Probability of Default (PD)", "Loss Given Default (LGD)", "Expected Loss (EL)",
+            "Risk-Weighted Asset (RWA)", "$ Unpaid Principal Balance at Charge-off", "Percent Loss Severity (3 month Lagged)", "$ Net Charge-offs", "$ Recoveries"
+        ]
+        target = "High_Risk_Transaction_Score"
+        # Scale the features
+        scaler = StandardScaler()
+        zero_flag_df[features] = scaler.fit_transform(zero_flag_df[features])
+        X = zero_flag_df[features]
+        # print(X)
+        y_pred = random_model.predict(X)
+        zero_flag_df["Risk Score"] = y_pred
+        # print(zero_flag_df["Risk Score"])
+        # zero_flag_df["Risk_Cluster"] = kmeans_model.predict(zero_flag_df[features])
+        zero_flag_df['Risk_Label'] = zero_flag_df['Risk Score'].apply(assign_risk_cluster)
+        # print(zero_flag_df["Risk_Label"])
+        csv_buffer1 = io.StringIO()
+        zero_flag_df.to_csv(csv_buffer1, index=False)
+        ml_output_csv_string = csv_buffer1.getvalue()
+        zero_flag_df.to_excel(f"{downloads_folder}\\Hackathon\\Saved\\zero_flag_test.xlsx", index=False, engine='openpyxl')
+        return({"reply":reply, "df" : csv_string, "ml_out" : ml_output_csv_string})
     ###### FIX THIS #######################333
     elif message != "" and extracted_text == "":
         messages.append({"role": "user", "content": message},)
@@ -285,7 +349,22 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
 
 @app.get('/pie-chart')
 def pie_chart():
-    pass
+    # flag 0 - low
+    # flag 0 - med high - potential
+    # flag 1 -
+    # flag 2
+    home_directory = os.path.expanduser("~")
+    downloads_folder = os.path.join(home_directory, "Downloads")
+    zero_df = pd.read_excel(f"{downloads_folder}\\Hackathon\\Saved\\zero_flag_test.xlsx", engine='openpyxl')
+    cat1 = zero_df[(zero_df['flag'] == 0) & (zero_df['Risk_Label'] == "Low Risk")]
+    cat2 = zero_df[(zero_df['flag'] == 0) & (zero_df['Risk_Label'] != "Low Risk")]
+    cat3 = zero_df[(zero_df['flag'] == 1)]
+    cat4 = zero_df[(zero_df['flag'] == 2)]
+    return {"cat1": len(cat1),
+            "cat2": len(cat2),
+            "cat3": len(cat3),
+            "cat4": len(cat4)
+            }
 
 @app.get('/reset-session')
 def reset():
