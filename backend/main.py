@@ -27,7 +27,13 @@ from collections import defaultdict
 # Load .env files
 # load_dotenv()
 
-os.environ["OPENAI_API_KEY"] = "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"
+# os.environ["OPENAI_API_KEY"] = "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"
+
+os.environ["OPENAI_API_KEY"] = "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"
+
+# os.environ["OPENAI_API_KEY"] = "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"
+
+# os.environ["OPENAI_API_KEY"] = "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"
 
 # os.environ["OPENAI_API_KEY"] = "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"
 
@@ -223,6 +229,8 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
             # rem = doc["remediation"]
             # og_df["missing fields"]
         # print(og_df.head())
+        missing_fields = og_df["missing fields"]
+        failing_rules = og_df["failing rules"]
         csv_buffer = io.StringIO()
         og_df.to_csv(csv_buffer, index=False)
         csv_string = csv_buffer.getvalue()
@@ -276,6 +284,10 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         # zero_flag_df["Risk_Cluster"] = kmeans_model.predict(zero_flag_df[features])
         zero_flag_df_og['Risk_Label'] = zero_flag_df_og['Risk Score'].apply(assign_risk_cluster)
         # print(zero_flag_df["Risk_Label"])
+        zero_flag_df_og.drop("missing fields", axis=1, inplace=True)
+        zero_flag_df_og["missing fields"] = missing_fields
+        zero_flag_df_og.drop("failing rules", axis=1, inplace=True)
+        zero_flag_df_og["failing rules"] = failing_rules
         csv_buffer1 = io.StringIO()
         zero_flag_df_og.to_csv(csv_buffer1, index=False)
         ml_output_csv_string = csv_buffer1.getvalue()
@@ -308,7 +320,6 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         home_directory = os.path.expanduser("~")
         downloads_folder = os.path.join(home_directory, "Downloads")
         og_df = pd.read_excel(f"{downloads_folder}\\Hackathon\\Saved\\test.xlsx", engine='openpyxl')
-
         # print(og_df.head())
         og_df["flag"] = np.nan
         og_df["failing rules"] = np.nan
@@ -344,6 +355,8 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
             # rem = doc["remediation"]
             # og_df["missing fields"]
         # print(og_df.head())
+        missing_fields = og_df["missing fields"]
+        failing_rules = og_df["failing rules"]
         csv_buffer = io.StringIO()
         og_df.to_csv(csv_buffer, index=False)
         csv_string = csv_buffer.getvalue()
@@ -397,7 +410,10 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         # print(zero_flag_df["Risk Score"])
         # zero_flag_df["Risk_Cluster"] = kmeans_model.predict(zero_flag_df[features])
         zero_flag_df_og['Risk_Label'] = zero_flag_df_og['Risk Score'].apply(assign_risk_cluster)
-        # print(zero_flag_df["Risk_Label"])
+        zero_flag_df_og.drop("missing fields", axis=1, inplace=True)
+        zero_flag_df_og["missing fields"] = missing_fields
+        zero_flag_df_og.drop("failing rules", axis=1, inplace=True)
+        zero_flag_df_og["failing rules"] = failing_rules
         csv_buffer1 = io.StringIO()
         zero_flag_df_og.to_csv(csv_buffer1, index=False)
         ml_output_csv_string = csv_buffer1.getvalue()
@@ -469,10 +485,10 @@ def bar():
     errs_df = og_df[(og_df['flag'] == 2)]
     for schedule in schedules:
         sch = mapping[schedule]
-        dic[schedule].append(int((compliant_df['PORTFOLIO_ID'] == sch).sum()))
-        dic[schedule].append(int((reg_risk_def['PORTFOLIO_ID'] == sch).sum()))
-        dic[schedule].append(int((pot_def['PORTFOLIO_ID'] == sch).sum()))
-        dic[schedule].append(int((errs_df['PORTFOLIO_ID'] == sch).sum()))
+        dic[sch].append(int((compliant_df['PORTFOLIO_ID'] == sch).sum()))
+        dic[sch].append(int((reg_risk_def['PORTFOLIO_ID'] == sch).sum()))
+        dic[sch].append(int((pot_def['PORTFOLIO_ID'] == sch).sum()))
+        dic[sch].append(int((errs_df['PORTFOLIO_ID'] == sch).sum()))
     return({
             "data" : dic
         })
@@ -507,7 +523,7 @@ def line():
             avg_risk_score_for_sub_schedule = sum_risk_score//total_filtered_rows
         else:
             avg_risk_score_for_sub_schedule = 0
-        dic[schedule] = avg_risk_score_for_sub_schedule
+        dic[sch] = avg_risk_score_for_sub_schedule
     return({
             "data" : dic
         })
