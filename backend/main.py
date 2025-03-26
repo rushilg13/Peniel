@@ -22,6 +22,7 @@ import json
 import numpy as np
 import ast
 from sklearn.preprocessing import StandardScaler, LabelEncoder
+from collections import defaultdict
 # from dotenv import load_dotenv
 # Load .env files
 # load_dotenv()
@@ -34,9 +35,9 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 
 # os.environ["OPENAI_API_KEY"] = "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"
 
-os.environ["OPENAI_API_KEY"] = "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"
+# os.environ["OPENAI_API_KEY"] = "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"
 
-# os.environ["OPENAI_API_KEY"] = "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"
+os.environ["OPENAI_API_KEY"] = "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"
 
 # os.environ["OPENAI_API_KEY"] = "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"
 
@@ -434,6 +435,42 @@ def pie_chart():
             "cat3": len(cat3),
             "cat4": len(cat4)
             }
+
+@app.get('/bar-graph')
+def tables():
+    dic = defaultdict(list)
+    mapping = {
+        'A.1 - INTERNATIONAL AUTO LOAN' : "IntAuto",
+        'A.2 - US AUTO LOAN' : "Auto",
+        'A.3 - INTERNATIONAL CREDIT CARD' : "IntCard",
+        'A.4 - INTERNATIONAL HOME EQUITY' : "IntHE",
+        'A.5 - INTERNATIONAL FIRST LIEN MORTGAGE' : "IntFM",
+        'A.6 - INTERNATIONAL OTHER CONSUMER SCHEDULE' : "IntlOthCons",
+        'A.7 - US OTHER CONSUMER' : "USOthCons",
+        'A.8 - INTERNATIONAL SMALL BUSINESS' : "IntSB",
+        'A.9 - US SMALL BUSINESS' : "USSB",
+        'A.10 - STUDENT LOAN' : "Student"
+    }
+    schedules = ['A.1 - INTERNATIONAL AUTO LOAN', 'A.2 - US AUTO LOAN', 'A.3 - INTERNATIONAL CREDIT CARD', 'A.4 - INTERNATIONAL HOME EQUITY', 'A.5 - INTERNATIONAL FIRST LIEN MORTGAGE', 'A.6 - INTERNATIONAL OTHER CONSUMER SCHEDULE', 'A.7 - US OTHER CONSUMER', 'A.8 - INTERNATIONAL SMALL BUSINESS', 'A.9 - US SMALL BUSINESS', 'A.10 - STUDENT LOAN']
+
+    home_directory = os.path.expanduser("~")
+    downloads_folder = os.path.join(home_directory, "Downloads")
+    zero_flag_df = pd.read_excel(f"{downloads_folder}\\Hackathon\\Saved\\zero_flag_test.xlsx", engine='openpyxl')
+    og_df = pd.read_excel(f"{downloads_folder}\\Hackathon\\Saved\\test.xlsx", engine='openpyxl')
+    compliant_df = zero_flag_df[(zero_flag_df['flag'] == 0) & (zero_flag_df['Risk_Label'] == "Low Risk")]
+    reg_risk_def = og_df[(og_df['flag'] == 1)]
+    pot_def = zero_flag_df[(zero_flag_df['flag'] == 0) & (zero_flag_df['Risk_Label'] != "Low Risk")]
+    errs_df = og_df[(og_df['flag'] == 2)]
+    print(len(pot_def))
+    for schedule in schedules:
+        sch = mapping[schedule]
+        dic[schedule].append(int((compliant_df['PORTFOLIO_ID'] == sch).sum()))
+        dic[schedule].append(int((reg_risk_def['PORTFOLIO_ID'] == sch).sum()))
+        dic[schedule].append(int((pot_def['PORTFOLIO_ID'] == sch).sum()))
+        dic[schedule].append(int((errs_df['PORTFOLIO_ID'] == sch).sum()))
+    return({
+            "data" : dic
+        })
 
 @app.get('/tables')
 def tables():
