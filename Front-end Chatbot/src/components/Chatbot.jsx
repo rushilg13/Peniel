@@ -41,8 +41,6 @@ const Chatbot = () => {
       setAttachedFile(null); // Clear the attached file after sending
       if (res.data.df)
         setResults(res.data.df);
-      console.log("Reply:", res.data);
-      console.log("Reply:", res.data.df);
     } catch (error) {
       console.error("Error sending message:", error);
       setConversation((prev) => [
@@ -68,8 +66,6 @@ const Chatbot = () => {
       const res = await axios.post("http://127.0.0.1:8000/upload-dataset", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-
-      console.log("res: "+res+" res.data "+res.data+" res.data.reply "+res.data.reply);
       res.data && res.data.reply ? setConversation((prev) => [
         ...prev,
         { sender: "bot", text: res.data.reply },
@@ -165,7 +161,7 @@ const Chatbot = () => {
         <ChartsAndTable res={results} />
        ) : (
         <WelcomePage />
-      )} 
+      )}
     </div>
   );
 };

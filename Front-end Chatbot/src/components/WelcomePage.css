@@ -1,0 +1,26 @@
+.welcome-page {
+    background-image: url('../assets/images/Landing.png'); /* Updated path to Landing.png */
+    background-size: contain; 
+    background-repeat: no-repeat;
+    background-position: center center; /* Center the image */
+    height: 100vh; /* Full viewport height */
+    width: 100%; /* Full viewport width */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start; /* Align content to the top */
+    align-items: flex-start; /* Align content to the left */
+    padding-left: 60px; /* Add padding around the content */
+    padding-top: 15px;
+    text-align: left;
+    color: "#333";
+}
+
+#p {
+    color: "#333";
+}
+
+.pItalics {
+    font-style: italic;
+    color: "#333";
+    font-weight: bold;
+}
