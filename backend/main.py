@@ -27,11 +27,13 @@ from collections import defaultdict
 # Load .env files
 # load_dotenv()
 
+os.environ["OPENAI_API_KEY"] = "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"
+
 # os.environ["OPENAI_API_KEY"] = "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"
 
 # os.environ["OPENAI_API_KEY"] = "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"
 
-os.environ["OPENAI_API_KEY"] = "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"
+# os.environ["OPENAI_API_KEY"] = "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"
 
 # os.environ["OPENAI_API_KEY"] = "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"
 
@@ -268,16 +270,17 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         X = zero_flag_df[features]
         # print(X)
         y_pred = random_model.predict(X)
-        zero_flag_df["Risk Score"] = y_pred
-        zero_flag_df["Risk Score"] = zero_flag_df["Risk Score"].astype(int)
+        zero_flag_df_og["Risk Score"] = y_pred
+        zero_flag_df_og["Risk Score"] = zero_flag_df_og["Risk Score"].astype(int)
         # print(zero_flag_df["Risk Score"])
         # zero_flag_df["Risk_Cluster"] = kmeans_model.predict(zero_flag_df[features])
-        zero_flag_df['Risk_Label'] = zero_flag_df['Risk Score'].apply(assign_risk_cluster)
+        zero_flag_df_og['Risk_Label'] = zero_flag_df_og['Risk Score'].apply(assign_risk_cluster)
         # print(zero_flag_df["Risk_Label"])
         csv_buffer1 = io.StringIO()
-        zero_flag_df.to_csv(csv_buffer1, index=False)
+        zero_flag_df_og.to_csv(csv_buffer1, index=False)
         ml_output_csv_string = csv_buffer1.getvalue()
-        zero_flag_df.to_excel(f"{downloads_folder}\\Hackathon\\Saved\\zero_flag_test.xlsx", index=False, engine='openpyxl')
+        print(zero_flag_df_og.head())
+        zero_flag_df_og.to_excel(f"{downloads_folder}\\Hackathon\\Saved\\zero_flag_test.xlsx", index=False, engine='openpyxl')
         # compliant_df = zero_flag_df[(zero_flag_df['flag'] == 0) & (zero_flag_df['Risk_Label'] == "Low Risk")]
         # reg_risk_def = og_df[(og_df['flag'] == 1)]
         # pot_def = zero_flag_df[(zero_flag_df['flag'] == 0) & (zero_flag_df['Risk_Label'] != "Low Risk")]
@@ -350,6 +353,7 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         with open(os.getcwd() + "\\Models\\kmeans_model.pkl", "rb") as file:
             kmeans_model = pickle.load(file)
         zero_flag_df = og_df[(og_df['flag'] == 0)]
+        zero_flag_df_og = zero_flag_df.copy()
         zero_flag_df["Probability of Default (PD)"] = np.random.uniform(0.01, 0.20)
         zero_flag_df["Loss Given Default (LGD)"] = np.random.uniform(0.4, 0.7)
         zero_flag_df['Expected Loss (EL)'] = zero_flag_df['Probability of Default (PD)'] * zero_flag_df['Loss Given Default (LGD)'] * zero_flag_df['$ Unpaid Principal Balance at Charge-off']
@@ -388,16 +392,17 @@ async def upload_rules_parser(file: UploadFile = File(None), message: str = Form
         X = zero_flag_df[features]
         # print(X)
         y_pred = random_model.predict(X)
-        zero_flag_df["Risk Score"] = y_pred
-        zero_flag_df["Risk Score"] = zero_flag_df["Risk Score"].astype(int)
+        zero_flag_df_og["Risk Score"] = y_pred
+        zero_flag_df_og["Risk Score"] = zero_flag_df_og["Risk Score"].astype(int)
         # print(zero_flag_df["Risk Score"])
         # zero_flag_df["Risk_Cluster"] = kmeans_model.predict(zero_flag_df[features])
-        zero_flag_df['Risk_Label'] = zero_flag_df['Risk Score'].apply(assign_risk_cluster)
+        zero_flag_df_og['Risk_Label'] = zero_flag_df_og['Risk Score'].apply(assign_risk_cluster)
         # print(zero_flag_df["Risk_Label"])
         csv_buffer1 = io.StringIO()
-        zero_flag_df.to_csv(csv_buffer1, index=False)
+        zero_flag_df_og.to_csv(csv_buffer1, index=False)
         ml_output_csv_string = csv_buffer1.getvalue()
-        zero_flag_df.to_excel(f"{downloads_folder}\\Hackathon\\Saved\\zero_flag_test.xlsx", index=False, engine='openpyxl')
+        print(zero_flag_df_og.head())
+        zero_flag_df_og.to_excel(f"{downloads_folder}\\Hackathon\\Saved\\zero_flag_test.xlsx", index=False, engine='openpyxl')
         # compliant_df = zero_flag_df[(zero_flag_df['flag'] == 0) & (zero_flag_df['Risk_Label'] == "Low Risk")]
         # reg_risk_def = og_df[(og_df['flag'] == 1)]
         # pot_def = zero_flag_df[(zero_flag_df['flag'] == 0) & (zero_flag_df['Risk_Label'] != "Low Risk")]
@@ -425,13 +430,14 @@ def pie_chart():
     home_directory = os.path.expanduser("~")
     downloads_folder = os.path.join(home_directory, "Downloads")
     zero_df = pd.read_excel(f"{downloads_folder}\\Hackathon\\Saved\\zero_flag_test.xlsx", engine='openpyxl')
+    og_df = pd.read_excel(f"{downloads_folder}\\Hackathon\\Saved\\test.xlsx", engine='openpyxl')
     cat1 = zero_df[(zero_df['flag'] == 0) & (zero_df['Risk_Label'] == "Low Risk")]
     cat2 = zero_df[(zero_df['flag'] == 0) & (zero_df['Risk_Label'] != "Low Risk")]
-    cat3 = zero_df[(zero_df['flag'] == 1)]
-    cat4 = zero_df[(zero_df['flag'] == 2)]
+    cat3 = og_df[((og_df['flag']) == 1.0)]
+    cat4 = og_df[((og_df['flag']) == 2.0)]
     return {
             "cat1": len(cat1),
-            "cat2": len(cat2), # 2
+            "cat2": len(cat2),
             "cat3": len(cat3),
             "cat4": len(cat4)
             }
@@ -496,6 +502,7 @@ def line():
         filtered_df = zero_flag_df[(zero_flag_df['PORTFOLIO_ID'] == sch)]
         total_filtered_rows = len(filtered_df)
         sum_risk_score = int(filtered_df["Risk Score"].sum())
+        # print(filtered_df.head())
         if total_filtered_rows > 0:
             avg_risk_score_for_sub_schedule = sum_risk_score//total_filtered_rows
         else:
