@@ -3,7 +3,6 @@ import axios from "axios";
 import ChartsAndTable from "./ChartsAndTable";
 import WelcomePage from "./WelcomePage";
 import attachLogo from "../assets/images/attachLogo.png";
-import sampleCSV from "../assets/data/sample.csv"; // Path to your CSV file
 
 
 const Chatbot = () => {
@@ -159,12 +158,12 @@ const Chatbot = () => {
           Reset Session
         </button>
       </div>
-      {results && results.length > 0 && results.data.df? ( 
+      {/* {results && results.length > 0 && results.data.df? ( 
         <ChartsAndTable res={results} />
        ) : (
         <WelcomePage />
-      )}
-      
+      )} */}
+        <ChartsAndTable res={results} />
     </div>
   );
 };

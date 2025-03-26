@@ -22,29 +22,46 @@ Chart.register(
 
   const ChartsAndTable = ({ res }) => {
 
-    //Compliant data - flag 0, low risk, green
-    //Regulatory Risk Defaulters - flag 1, orange
-    //Potential Defaulters - flag 0, high and medium risk, red
-    //Errors in Data - flag 2, yellow
+    const [pieChartData, setPieChartData] = useState({
+      labels: [], // Empty labels
+      datasets: [
+        {
+          data: [], // Empty data array
+          backgroundColor: [], // Empty background colors
+        },
+      ],
+    });
+
+    useEffect(() => {
+      const fetchPieChartData = async () => {
+        try {
+          const response = await axios.get("http://127.0.0.1:8000/pie-chart");
+          const data = response.data;
+  
+          // Update pie chart data
+          setPieChartData({
+            labels: ["Compliant Data", "Regulatory Risk Defaulters", "Potential Defaulters", "Errors In Data"],
+            datasets: [
+              {
+                data: [
+                  data?.cat1 || 0,
+                  data?.cat3 || 0,
+                  data?.cat2 || 0,
+                  data?.cat4 || 0,
+                ],
+                backgroundColor: ["#059e40", "#d14c04", "#cc020d", "#fcba03"], // Green, Orange, Red, Yellow
+              },
+            ],
+          });
+        } catch (error) {
+          console.error("Error fetching pie chart data:", error);
+        }
+      };
+  
+      fetchPieChartData(); // Call the async function
+    }, []);
+    
     const data=res?.data||{};
-    //get transactions having flag 0, 1, 2
-    const [flag0Data, setFlag0Data] = useState([]);
-
-  // Function to filter transactions with flag 0
-  const filterFlag0Data = () => {
-    if (res?.transactions) {
-      const filteredData = res.data.transactions.filter(
-        (transaction) => transaction.flag === 0
-      );
-      setFlag0Data(filteredData);
-      console.log("Filtered Data with Flag 0:", filteredData);
-    }
-  };
-
-  // Automatically filter data when `res` changes
-  useEffect(() => {
-    filterFlag0Data();
-  }, [res]);
 
     //segregate flag 0 transactions into compliant_transactions or potentialDefaulters_transactions based on risk label
     const [compliant_transactions, setCompliant_transactions] = useState();
@@ -80,34 +97,6 @@ Chart.register(
     //   })),  
     // })
     
-    const [pieChartData, setPieChartData] = useState({
-      labels: [], // Empty labels
-      datasets: [
-        {
-          data: [], // Empty data array
-          backgroundColor: [], // Empty background colors
-        },
-      ],
-    });
-
-    // Update pieChartData when `res` changes
-    // useEffect(() => {
-    //   if (res) {
-    //     setPieChartData({
-    //       labels: [ "Compliant Data","Regulatory Risk Defaulters", "Potential Defaulters", "Errors In Data"],
-    //       datasets: [
-    //         {
-    //           data: [
-    //             res.non_flagged_count || 0,
-    //             res.operational_flagged_count || 0,
-    //             res.regulatory_flagged_count || 0,
-    //           ],
-    //           backgroundColor: ["#059e40", "#d14c04", "#cc020d"], // Green, Orange, Red
-    //         },
-    //       ],
-    //     });
-    //   }
-    // }, [res]); // Dependency array ensures this runs only when `res` changes
 
 
     const pieChartOptions = {
