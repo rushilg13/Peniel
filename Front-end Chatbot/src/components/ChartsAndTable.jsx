@@ -97,11 +97,10 @@ Chart.register(
       const fetchBarGraph = async () => {
         try {
           const response = await axios.get("http://127.0.0.1:8000/bar-graph");
-          const data = response.data;
+          const data = response.data.data;
 
           const labels = Object.keys(data);
           const values = Object.values(data);
-
           const datasets = [
             {
               label: "Compliant Data",
@@ -137,7 +136,7 @@ Chart.register(
       const fetchLineChartData = async () => {
         try {
           const response = await axios.get("http://127.0.0.1:8000/line-graph");
-          const data = response.data;
+          const data = response.data.data;
   
           // Update line chart data
           setLineChartData({
@@ -174,7 +173,7 @@ Chart.register(
               return {
               key: index + 1, // Unique key for each row
               transactionID: transaction["Transaction ID"],
-              customerID: transaction["CUSTOMER_ID"],
+              customerID: transaction["Customer ID"],
               subschedule: transaction["PORTFOLIO_ID"],
               riskLabel: transaction["Risk_Label"],
               };
@@ -223,6 +222,7 @@ Chart.register(
                 }
               }
 
+              //fix
               if (typeof remediation === "string") {
                 try {
                   remediation = JSON.parse(remediation.replace(/'/g, '"'));
@@ -235,10 +235,10 @@ Chart.register(
               return {
               key: index + 1, // Unique key for each row
               transactionID: transaction["Transaction ID"],
-              customerID: transaction["CUSTOMER_ID"],
+              customerID: transaction["Customer ID"],
               subschedule: transaction["PORTFOLIO_ID"],
               field: Array.isArray(failingRules) ? failingRules.join(", ") : failingRules, // Join array elements with a comma
-              reason: Array.isArray(remediation) ? remediation.join(", ") : remediation, // Join array elements with a comma
+              reason: Array.isArray(remediation) ? remediation.join(", ") : (remediation!=null? remediation : ["We cannot offer you a solution right now. Thank you for your patience."]), // Join array elements with a comma
               };
             });
   
@@ -283,7 +283,7 @@ Chart.register(
             return {
             key: index + 1, // Unique key for each row
             transactionID: transaction["Transaction ID"],
-            customerID: transaction["CUSTOMER ID"],
+            customerID: transaction["Customer ID"],
             subschedule: transaction["PORTFOLIO_ID"],
             riskscore: transaction["Risk Score"],
             riskLabel: transaction["Risk_Label"],
@@ -308,7 +308,7 @@ Chart.register(
               key: "subschedule",
             },
             {
-              title: "% Risk of defaulting",
+              title: "Risk Score",
               dataIndex: "riskscore",
               key: "riskscore",
             },
@@ -340,7 +340,7 @@ Chart.register(
           return {
           key: index + 1, // Unique key for each row
           transactionID: transaction["Transaction ID"],
-          customerID: transaction["CUSTOMER ID"],
+          customerID: transaction["Customer ID"],
           subschedule: transaction["PORTFOLIO_ID"],
           field: Array.isArray(missingFields) ? missingFields.join(", ") : missingFields, // Join array elements with a comma
           };
@@ -417,12 +417,54 @@ Chart.register(
               display: true,
               text: "Sub-Schedules", // Label for the x-axis
             },
+            ticks: {
+              maxRotation: 45, // Rotate labels for better visibility
+              minRotation: 0,
+            },
           },
           y: {
             stacked: true, // Enable stacking on the y-axis
             title: {
               display: true,
               text: "Number of Transactions", // Label for the y-axis
+            },
+          },
+        },
+      };
+
+      const lineChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "top", // Position the legend at the top
+            align: "start"
+          },
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                return `${context.dataset.label}: ${context.raw}`; // Show dataset label and value in the tooltip
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            stacked: true, // Enable stacking on the x-axis
+            title: {
+              display: true,
+              text: "Sub-Schedules", // Label for the x-axis
+            },
+            ticks: {
+              maxRotation: 45, // Rotate labels for better visibility
+              minRotation: 0,
+            },
+          },
+          y: {
+            stacked: true, // Enable stacking on the y-axis
+            title: {
+              display: true,
+              text: "Score", // Label for the y-axis
             },
           },
         },
@@ -481,8 +523,8 @@ Chart.register(
                 )}
                 {lineChartData && (
                   <div style={styles.lineChartContainer}>
-                    <h4>Average Risk Score across Subschedules</h4>
-                    <Line data={lineChartData} />
+                    <h4>Average Risk Score across Sub-schedules</h4>
+                    <Line data={lineChartData} options={lineChartOptions}/>
                   </div>
                 )}
               </div>
@@ -509,7 +551,7 @@ Chart.register(
                     </span>
                   }
                      key="1">
-                      <p>Compliant, low risk data</p>
+                      <div>Compliant, low risk data.</div>
                     <Table
                       columns={compliantTableData.columns}
                       dataSource={compliantTableData.data}
@@ -525,7 +567,7 @@ Chart.register(
                     </span>
                   }
                      key="2">
-                      <p>Data that is not compliant with rules</p>
+                      <div>Data that is not compliant with rules.</div>
                     <Table
                       columns={regulatoryRiskDefaultersData.columns}
                       dataSource={regulatoryRiskDefaultersData.data}
@@ -541,7 +583,7 @@ Chart.register(
                     </span>
                   }
                      key="3">
-                      <p>Heightened risk compliant data</p>
+                      <div>Heightened risk compliant data, risk score calculated on a scale of 1-100.</div>
                     <Table
                       columns={potentialDefaultersTableData.columns}
                       dataSource={potentialDefaultersTableData.data}
@@ -557,7 +599,7 @@ Chart.register(
                     </span>
                   }
                      key="4">
-                      <p>Data with missing attributes according to the rules</p>
+                      <div>Data with missing attributes according to the rules.</div>
                     <Table
                       columns={errorTableData.columns}
                       dataSource={errorTableData.data}
@@ -592,41 +634,43 @@ Chart.register(
         flexDirection: "row", // Align charts in a single line
         justifyContent: "space-between", // Space charts evenly
         alignItems: "flex-start", // Align charts at the top
-        padding: "20px",
+        padding: "1px",
         backgroundColor: "#fff",
         borderBottom: "1px solid #ddd", // Add a separator
       },
       barChartContainer: {
-        width: "30%", // Equal width for all charts
+        width: "35%", // Equal width for all charts
         padding: "1px",
-        border: "1px solid #ddd",
+        border: "2px solid #ddd",
         borderRadius: "10px",
         backgroundColor: "#fff",
         boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
         textAlign: "center",
-        height: "300px",
+        height: "280px",
         overflowX: "auto",
         overflowY: "auto",
       },
       lineChartContainer: {
         width: "30% !important", // Equal width for all charts
         padding: "1px",
-        border: "1px solid #ddd",
+        border: "2px solid #ddd",
         borderRadius: "10px",
         backgroundColor: "#fff",
         boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
         textAlign: "center",
-        height: "300px"
+        height: "280px",
+        overflowX: "auto",
+        overflowY: "auto",
       },
       pieChartContainer: {
         width: "30% !important", // Equal width for all charts
         padding: "1px",
-        border: "1px solid #ddd",
+        border: "2px solid #ddd",
         borderRadius: "10px",
         backgroundColor: "#fff",
         boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
         textAlign: "center",
-        height: "300 px",
+        height: "280px",
         overflowX: "auto",
         overflowY: "auto",
       },
