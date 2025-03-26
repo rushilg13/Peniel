@@ -76,7 +76,7 @@ Chart.register(
   
           // Update pie chart data
           setPieChartData({
-            labels: ["Compliant Data", "Regulatory Risk Defaulters", "Potential Defaulters", "Errors In Data"],
+            labels: ["Compliant Data", "Regulatory Risk Defaulters", "Potential Compliant Defaulters", "Errors In Data"],
             datasets: [
               {
                 data: [
@@ -547,11 +547,11 @@ Chart.register(
                       color: "#059e40"
                     }}
                     >
-                    Compliant Data
+                    Compliant Data Repository
                     </span>
                   }
                      key="1">
-                      <div>Compliant, low risk data.</div>
+                      <div className="tabDescription">Compliant, low risk data.</div>
                     <Table
                       columns={compliantTableData.columns}
                       dataSource={compliantTableData.data}
@@ -567,7 +567,7 @@ Chart.register(
                     </span>
                   }
                      key="2">
-                      <div>Data that is not compliant with rules.</div>
+                      <div className="tabDescription">Data that is not compliant with rules.</div>
                     <Table
                       columns={regulatoryRiskDefaultersData.columns}
                       dataSource={regulatoryRiskDefaultersData.data}
@@ -583,7 +583,7 @@ Chart.register(
                     </span>
                   }
                      key="3">
-                      <div>Heightened risk compliant data, risk score calculated on a scale of 1-100.</div>
+                      <div className="tabDescription">Heightened risk compliant data, risk score calculated on a scale of 1-100.</div>
                     <Table
                       columns={potentialDefaultersTableData.columns}
                       dataSource={potentialDefaultersTableData.data}
@@ -599,7 +599,7 @@ Chart.register(
                     </span>
                   }
                      key="4">
-                      <div>Data with missing attributes according to the rules.</div>
+                      <div className="tabDescription">Data with missing attributes according to the rules.</div>
                     <Table
                       columns={errorTableData.columns}
                       dataSource={errorTableData.data}
