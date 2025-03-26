@@ -42,7 +42,8 @@ const Chatbot = () => {
       setAttachedFile(null); // Clear the attached file after sending
       if (res.data.df)
         setResults(res.data.df);
-      console.log("Reply:", res.data.reply);
+      console.log("Reply:", res.data);
+      console.log("Reply:", res.data.df);
     } catch (error) {
       console.error("Error sending message:", error);
       setConversation((prev) => [
@@ -159,7 +160,7 @@ const Chatbot = () => {
           Reset Session
         </button>
       </div>
-      {results && results.length > 0 && results.data.df? ( 
+      {results && results.length > 0 ? ( 
         <ChartsAndTable res={results} />
        ) : (
         <WelcomePage />

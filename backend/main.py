@@ -37,9 +37,9 @@ import ast
 
 # os.environ["OPENAI_API_KEY"] = "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"
 
-os.environ["OPENAI_API_KEY"] = "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"
+# os.environ["OPENAI_API_KEY"] = "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"
 
-# os.environ["OPENAI_API_KEY"] = "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"
+os.environ["OPENAI_API_KEY"] = "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"
 
 # Set Middleware
 middleware = [ Middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])]

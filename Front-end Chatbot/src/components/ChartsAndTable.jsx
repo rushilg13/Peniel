@@ -4,6 +4,7 @@ import { Pie, Bar, Line } from "react-chartjs-2"; // Import Line chart
 import { Chart, ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement } from "chart.js";
 import { Table, Tabs } from "antd"; // Import Ant Design Table
 import "./ChartsAndTable.css";
+import { saveAs } from "file-saver";
 
 // Register Chart.js components
 Chart.register(
@@ -683,6 +684,36 @@ Chart.register(
 
     const handleDownload = async () => {
 
+      console.log(res);
+      if (!res ) {
+        console.error("No data available to download.");
+        return;
+      }
+    
+        
+      try {
+        const rows = res.split("\n").map((row) => row.split(","));
+        const headers = rows[0]; // First row contains headers
+        const data = rows.slice(1); // Remaining rows contain data
+
+        // Convert the parsed data back into CSV format
+        const csvContent = [headers.join(","), ...data.map((row) => row.join(","))].join("\n");
+        // Create a Blob object for the CSV data
+        const blob = new Blob([csvContent], { type: "text/csv" });
+    
+        // Create a download link
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "transactions_data.csv"; // File name for the downloaded CSV
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    
+        console.log("CSV file downloaded successfully.");
+      } catch (error) {
+        console.error("Error generating CSV file:", error);
+      }
     };
 
       return (
