@@ -22,4 +22,5 @@
 .pItalics {
     font-style: italic;
     color: "#333";
+    font-weight: bold;
 }

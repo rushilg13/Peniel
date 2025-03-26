@@ -156,13 +156,12 @@ const Chatbot = () => {
         </button>
       </div>
 
-      {/* {results && results.length > 0 ? ( 
+      {results && results.length > 0 ? ( 
 
         <ChartsAndTable res={results} />
        ) : (
         <WelcomePage />
-      )}  */}
-      <ChartsAndTable res={results} />
+      )}
     </div>
   );
 };
