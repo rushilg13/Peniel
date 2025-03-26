@@ -33,6 +33,29 @@ Chart.register(
       ],
     });
 
+    const [barChartData, setBarChartData] = useState({
+      labels: [], // Empty labels
+      datasets: [
+        {
+          label: [],
+          data: [],
+          backgroundColor: [], // Empty background colors
+        },
+      ],
+    });
+
+    const [lineChartData, setLineChartData] = useState({
+      labels: [], // Empty labels
+      datasets: [
+        {
+          label: [],
+          data: [],
+          borderColor: [], // Empty background colors
+          fill: null,
+        },
+      ],
+    });
+
     const [regulatoryRiskDefaultersData, setRegulatoryRiskDefaultersData] = useState({
     });
 
@@ -70,6 +93,70 @@ Chart.register(
           console.error("Error fetching pie chart data:", error);
         }
       };
+
+      const fetchBarGraph = async () => {
+        try {
+          const response = await axios.get("http://127.0.0.1:8000/bar-graph");
+          const data = response.data;
+
+          const labels = Object.keys(data);
+          const values = Object.values(data);
+
+          const datasets = [
+            {
+              label: "Compliant Data",
+              data: values.map((value) => value[0] || 0),
+              backgroundColor: "#059e40",
+            },
+            {
+              label: "Regulatory Risk Defaulters",
+              data: values.map((value) => value[1] || 0),
+              backgroundColor: "#d14c04",
+            },
+            {
+              label: "Potential Defaulters",
+              data: values.map((value) => value[2] || 0),
+              backgroundColor: "#cc020d",
+            },
+            {
+              label: "Errors In Data",
+              data: values.map((value) => value[3] || 0),
+              backgroundColor: "#fcba03",
+            },
+          ]
+  
+          setBarChartData({
+            labels: labels,
+            datasets: datasets,
+          });
+        } catch (error) {
+          console.error("Error fetching bar graph data:", error);
+        }
+      };
+
+      const fetchLineChartData = async () => {
+        try {
+          const response = await axios.get("http://127.0.0.1:8000/line-graph");
+          const data = response.data;
+  
+          // Update line chart data
+          setLineChartData({
+            labels: Object.keys(data),
+            datasets: [
+              {
+                label: "Average Risk Score",
+                data: Object.values(data),
+                borderColor: "#cc020d",
+                fill: false,
+              },
+            ],
+          });
+        } catch (error) {
+          console.error("Error fetching pie chart data:", error);
+        }
+      };
+
+
 
       const fetchTableData = async () => {
         try {
@@ -293,7 +380,10 @@ Chart.register(
   };
   
       fetchPieChartData(); // Call the async function
+      fetchBarGraph();
+      fetchLineChartData();
       fetchTableData();
+
     }, []);
 
     const pieChartOptions = {
@@ -303,34 +393,6 @@ Chart.register(
         }
       }
     };
-
-
-      // Bar Chart Data
-      const [barChartData, setBarChartData] = useState({
-        labels: ["A-1", "A-2", "A-3", "A-4", "A-5", "A-6", "A-7", "A-8", "A-9", "A-10"],
-        datasets: [
-          {
-            label: "Compliant Data",
-            data: [12, 19, 8, 15, 10, 14, 9, 7, 13, 11],
-            backgroundColor: "#059e40",
-          },
-          {
-            label: "Regulatory Risk Defaulters",
-            data: [5, 10, 4, 8, 6, 7, 5, 3, 6, 5],
-            backgroundColor: "#d14c04",
-          },
-          {
-            label: "Potential Defaulters",
-            data: [3, 6, 2, 4, 3, 5, 2, 1, 4, 3],
-            backgroundColor: "#cc020d",
-          },
-          {
-            label: "Errors In Data",
-            data: [3, 6, 2, 4, 3, 5, 2, 1, 4, 3],
-            backgroundColor: "#fcba03",
-          },
-        ],
-      });
     
       const barChartOptions = {
         responsive: true,
@@ -366,59 +428,7 @@ Chart.register(
         },
       };
     
-      // Line Chart Data
-      const [lineChartData, setLineChartData] = useState({
-        labels: ["A-1", "A-2", "A-3", "A-4", "A-5", "A-6", "A-7", "A-8", "A-9", "A-10"],
-        datasets: [
-          {
-            label: "Average Risk Score",
-            data: [65, 59, 80, 81, 56, 55, 40, 32, 45, 55], // Sample Data
-            borderColor: "#cc020d",
-            fill: false,
-          },
-        ],
-      });
     
-      
-
-    //   // Set bar chart data
-    //   setBarChartData({
-    //     labels: Object.keys(data.transactions_by_sub_schedule),
-    //     datasets: [
-    //       {
-    //         label: "Non-Flagged",
-    //         data: Object.values(data.transactions_by_sub_schedule),
-    //         backgroundColor: "#059e40",
-    //       },
-    //       {
-    //         label: "Flagged for Operational Risk",
-    //         data: Object.values(data.transactions_by_sub_schedule),
-    //         backgroundColor: "#d14c04",
-    //       },
-    //       {
-    //         label: "Flagged for Regulatory Risk",
-    //         data: Object.values(data.transactions_by_sub_schedule),
-    //         backgroundColor: "#cc020d",
-    //       },
-    //     ],
-    //   });
-
-    //   // Set line chart data
-    //   setLineChartData({
-    //     labels: Object.keys(data.average_risk_score_across_subschedules),
-    //     datasets: [
-    //       {
-    //         label: "Average Risk Score",
-    //         data: Object.values(data.average_risk_score_across_subschedules), // Example: Transaction counts
-    //         borderColor: "#cc020d",
-    //         fill: false,
-    //       },
-    //     ],
-    //   });
-
-    
-
-
     const handleDownload = async () => {
 
       console.log(res);
