@@ -69,7 +69,10 @@ def assign_risk_cluster(score):
     else:
         return "High Risk"
 
-messages = [ {"role": "system", "content": "Perform a comprehensive analysis of the provided bank regulatory dataset to ensure compliance with specified rules."} ]
+with open('Retail_context_setting.json', 'r') as file:
+    context_setting = json.load(file)
+
+messages = [ {"role": "system", "content": "Perform a comprehensive analysis of the provided bank regulatory dataset to ensure compliance with specified rules. The following rules uploaded as a .json have mandatory fields for sub-schedules. The key values are sub-schedules and values are array of mandatory fields for each corresponding sub-schedule. \n" + str(context_setting)} ]
 
 @app.get('/')
 def home():
