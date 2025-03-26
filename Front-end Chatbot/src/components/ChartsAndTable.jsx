@@ -33,6 +33,9 @@ Chart.register(
       ],
     });
 
+    const [regulatoryRiskDefaultersData, setRegulatoryRiskDefaultersData] = useState({
+    });
+
     useEffect(() => {
       const fetchPieChartData = async () => {
         try {
@@ -58,11 +61,88 @@ Chart.register(
           console.error("Error fetching pie chart data:", error);
         }
       };
+
+      const fetchTableData = async () => {
+        try {
+          const response = await axios.get("http://127.0.0.1:8000/tables");
+          const data = response.data;
+
+          const compliantData=data.compliant_df_json || [];
+          const regRiskDefaulters=JSON.parse(data.reg_risk_def_json || "[]");
+          const potentialDefaulters=JSON.parse(data.pot_def_json || "[]");
+          const errorsInData=data.errs_df_json || [];
+
+          console.log("regRiskDefaulters: "+regRiskDefaulters);
+
+          if (Array.isArray(regRiskDefaulters)) {
+            // Map the transactions into the required format for the table
+            const reg_risk_data = regRiskDefaulters.map((transaction, index) => {
+              let failingRules = transaction["failing rules"];
+              let remediation = transaction["remediation"];
+              if (typeof failingRules === "string") {
+                try {
+                  failingRules = JSON.parse(failingRules.replace(/'/g, '"'));
+                } catch (error) {
+                  console.error("Error parsing failing rules:", error);
+                  failingRules = [];
+                }
+              }
+
+              if (typeof remediation === "string") {
+                try {
+                  remediation = JSON.parse(remediation.replace(/'/g, '"'));
+                } catch (error) {
+                  console.error("Error parsing remediation:", error);
+                  remediation = [];
+                }
+              }
+
+              return {
+              key: index + 1, // Unique key for each row
+              transactionID: transaction["Transaction ID"],
+              subschedule: transaction["PORTFOLIO_ID"],
+              field: Array.isArray(failingRules) ? failingRules.join(", ") : failingRules, // Join array elements with a comma
+              reason: Array.isArray(remediation) ? remediation.join(", ") : remediation, // Join array elements with a comma
+              };
+            });
+  
+          setRegulatoryRiskDefaultersData({
+            columns: [
+              {
+                title: "Transaction ID",
+                dataIndex: "transactionID",
+                key: "transactionID",
+              },
+              {
+                title: "Product",
+                dataIndex: "subschedule",
+                key: "subschedule",
+              },
+              {
+                title: "Failing Rule(s)",
+                dataIndex: "field",
+                key: "field",
+              },
+              {
+                title: "Remediation",
+                dataIndex: "reason",
+                key: "reason",
+              },
+            ],
+            data: reg_risk_data,
+          });
+        } else {
+          console.error("regRiskDefaulters is not an array:", regRiskDefaulters);
+        }
+    
+        } catch (error) {
+          console.error("Error fetching table data:", error);
+        }
+      };
   
       fetchPieChartData(); // Call the async function
+      fetchTableData();
     }, []);
-    
-    const data=res?.data||{};
 
     //segregate flag 0 transactions into compliant_transactions or potentialDefaulters_transactions based on risk label
     const [compliant_transactions, setCompliant_transactions] = useState();
@@ -182,122 +262,6 @@ Chart.register(
           },
         ],
       });
-
-      
-    
-      //regulatory table data
-      const [regulatoryRiskDefaultersData, setRegulatoryRiskDefaultersData] = useState({
-        columns: [
-          {
-            title: "Transaction ID",
-            dataIndex: "transactionID",
-            key: "transactionID",
-          },
-          {
-            title: "Customer ID",
-            dataIndex: "customerID",
-            key: "customerID",
-          },
-          {
-            title: "Product",
-            dataIndex: "subschedule",
-            key: "subschedule",
-          },
-          {
-            title: "% Risk of defaulting",
-            dataIndex: "riskscore",
-            key: "riskscore",
-          },
-          {
-            title: "Risk Label",
-            dataIndex: "riskLabel",
-            key: "riskLabel",
-          },
-          {
-            title: "Failing Field",
-            dataIndex: "field",
-            key: "field",
-          },
-          {
-            title: "Reason for Failure",
-            dataIndex: "reason",
-            key: "reason",
-          },
-          {
-            title: "Steps for Remediation",
-            dataIndex: "remediation",
-            key: "remediation",
-          },
-        ],
-        data: [
-          {
-            key: "1",
-            transactionID: 66996885,
-            customerID: "EWOURW",
-            subschedule: "International Auto Loan",
-            riskscore: 66,
-            riskLabel: "High",
-            field: "Amount",
-            reason: "Exceeds limit",
-            remediation: "Reduce amount to within the limit",
-          },
-          {
-            key: "2",
-            transactionID: 66996886,
-            customerID: "ETUWJK",
-            subschedule: "Student Loan",
-            riskscore: 22,
-            riskLabel: "Medium",
-            field: "Date",
-            reason: "Invalid format",
-            remediation: "Correct date format",
-          },
-          {
-            key: "3",
-            transactionID: 66996887,
-            customerID: "OWUEFW",
-            subschedule: "US Small Business",
-            riskscore: 15,
-            riskLabel: "Medium",
-            field: "Account Number",
-            reason: "Missing value",
-            remediation: "Provide account",
-          },
-          {
-            key: "4",
-            transactionID: 66996888,
-            customerID: "WEOUGD",
-            subschedule: "International Credit Card",
-            riskscore: 30,
-            riskLabel: "High",
-            field: "Currency",
-            reason: "Unsupported currency",
-            remediation: "Correct currency",
-          },
-          {
-            key: "5",
-            transactionID: 66996889,
-            customerID: "QWIUDW",
-            subschedule: "US Auto Loan",
-            riskscore: 89,
-            riskLabel: "High",
-            field: "Description",
-            reason: "Too long",
-            remediation: "Shorten description",
-          },
-          {
-            key: "6",
-            transactionID: 66996885,
-            customerID: "TJGHID",
-            subschedule: "US Other Consumer",
-            riskscore: 20,
-            riskLabel: "Medium",
-            field: "Amount",
-            reason: "Exceeds limit",
-            remediation: "Reduce amount to within the limit",
-          },
-        ],
-      })
     
       //potential defaulters table data
       const [potentialDefaultersTableData, setPotentialDefaultersTableData] = useState({
@@ -541,38 +505,7 @@ Chart.register(
     //   });
 
     //   //set regulatory table data
-    //   setRegulatoryRiskDefaultersData({
-    //     columns: [
-    //       {
-    //         title: "Transaction ID",
-    //         dataIndex: "transactionID",
-    //         key: "transactionID",
-    //       },
-    //       {
-    //         title: "Subschedule",
-    //         dataIndex: "subschedule",
-    //         key: "subschedule",
-    //       },
-    //       {
-    //         title: "Failing Field",
-    //         dataIndex: "field",
-    //         key: "field",
-    //       },
-    //       {
-    //         title: "Reason for Failure",
-    //         dataIndex: "reason",
-    //         key: "reason",
-    //       },
-    //     ],
-    //     data: data.regulatory_risk_transactions.map((transaction, index) => ({
-    //       key: index + 1, // Unique key for each row
-    //       transactionID: transaction.transactionID,
-    //       subschedule: transaction.subschedule,
-    //       field: transaction.field,
-    //       reason: transaction.reason,
-    //     })),
-    //   });
-
+      
     //   //set potential defaulters table data
     //   setPotentialDefaultersTableData({
     //     columns: [
