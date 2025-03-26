@@ -36,6 +36,15 @@ Chart.register(
     const [regulatoryRiskDefaultersData, setRegulatoryRiskDefaultersData] = useState({
     });
 
+    const [potentialDefaultersTableData, setPotentialDefaultersTableData] = useState({
+    });
+
+    const [compliantTableData, setCompliantTableData] = useState({
+    });
+
+    const [errorTableData, setErrorTableData] = useState({
+    });
+
     useEffect(() => {
       const fetchPieChartData = async () => {
         try {
@@ -67,13 +76,52 @@ Chart.register(
           const response = await axios.get("http://127.0.0.1:8000/tables");
           const data = response.data;
 
-          const compliantData=data.compliant_df_json || [];
+          const compliantData=JSON.parse(data.compliant_df_json || "[]");
           const regRiskDefaulters=JSON.parse(data.reg_risk_def_json || "[]");
           const potentialDefaulters=JSON.parse(data.pot_def_json || "[]");
-          const errorsInData=data.errs_df_json || [];
+          const errorsInData=JSON.parse(data.errs_df_json || "[]");
 
-          console.log("regRiskDefaulters: "+regRiskDefaulters);
-
+          if (Array.isArray(compliantData)) {
+            // Map the transactions into the required format for the table
+            const compliant_data = compliantData.map((transaction, index) => {
+              return {
+              key: index + 1, // Unique key for each row
+              transactionID: transaction["Transaction ID"],
+              customerID: transaction["CUSTOMER_ID"],
+              subschedule: transaction["PORTFOLIO_ID"],
+              riskLabel: transaction["Risk_Label"],
+              };
+            });
+  
+            setCompliantTableData({
+            columns: [
+              {
+                title: "Transaction ID",
+                dataIndex: "transactionID",
+                key: "transactionID",
+              },
+              {
+                title: "Customer ID",
+                dataIndex: "customerID",
+                key: "customerID",
+              },
+              {
+                title: "Product",
+                dataIndex: "subschedule",
+                key: "subschedule",
+              },
+              {
+                title: "Risk Score",
+                dataIndex: "riskLabel",
+                key: "riskLabel",
+              },
+            ],
+            data: compliant_data,
+          });
+        } else {
+          console.error("compliantData is not an array:", compliantData);
+        }
+          
           if (Array.isArray(regRiskDefaulters)) {
             // Map the transactions into the required format for the table
             const reg_risk_data = regRiskDefaulters.map((transaction, index) => {
@@ -100,6 +148,7 @@ Chart.register(
               return {
               key: index + 1, // Unique key for each row
               transactionID: transaction["Transaction ID"],
+              customerID: transaction["CUSTOMER_ID"],
               subschedule: transaction["PORTFOLIO_ID"],
               field: Array.isArray(failingRules) ? failingRules.join(", ") : failingRules, // Join array elements with a comma
               reason: Array.isArray(remediation) ? remediation.join(", ") : remediation, // Join array elements with a comma
@@ -112,6 +161,11 @@ Chart.register(
                 title: "Transaction ID",
                 dataIndex: "transactionID",
                 key: "transactionID",
+              },
+              {
+                title: "Customer ID",
+                dataIndex: "customerID",
+                key: "customerID",
               },
               {
                 title: "Product",
@@ -135,50 +189,112 @@ Chart.register(
           console.error("regRiskDefaulters is not an array:", regRiskDefaulters);
         }
     
-        } catch (error) {
-          console.error("Error fetching table data:", error);
-        }
-      };
+        if (Array.isArray(potentialDefaulters)) {
+          // Map the transactions into the required format for the table
+          const pot_def_data = potentialDefaulters.map((transaction, index) => {
+
+            return {
+            key: index + 1, // Unique key for each row
+            transactionID: transaction["Transaction ID"],
+            customerID: transaction["CUSTOMER ID"],
+            subschedule: transaction["PORTFOLIO_ID"],
+            riskscore: transaction["Risk Score"],
+            riskLabel: transaction["Risk_Label"],
+            };
+          });
+
+          setPotentialDefaultersTableData({
+          columns: [
+            {
+              title: "Transaction ID",
+              dataIndex: "transactionID",
+              key: "transactionID",
+            },
+            {
+              title: "Customer ID",
+              dataIndex: "customerID",
+              key: "customerID",
+            },
+            {
+              title: "Product",
+              dataIndex: "subschedule",
+              key: "subschedule",
+            },
+            {
+              title: "% Risk of defaulting",
+              dataIndex: "riskscore",
+              key: "riskscore",
+            },
+            {
+              title: "Risk Label",
+              dataIndex: "riskLabel",
+              key: "riskLabel",
+            },
+          ],
+          data: pot_def_data,
+        });
+      } else {
+        console.error("potentialDefaulters is not an array:", potentialDefaulters);
+      }
+
+      if (Array.isArray(errorsInData)) {
+        // Map the transactions into the required format for the table
+        const error_data = errorsInData.map((transaction, index) => {
+          let missingFields = transaction["missing fields"];
+          if (typeof missingFields === "string") {
+            try {
+              missingFields = JSON.parse(missingFields.replace(/'/g, '"'));
+            } catch (error) {
+              console.error("Error parsing missing fields:", error);
+              missingFields = [];
+            }
+          }
+
+          return {
+          key: index + 1, // Unique key for each row
+          transactionID: transaction["Transaction ID"],
+          customerID: transaction["CUSTOMER ID"],
+          subschedule: transaction["PORTFOLIO_ID"],
+          field: Array.isArray(missingFields) ? missingFields.join(", ") : missingFields, // Join array elements with a comma
+          };
+        });
+
+        setErrorTableData({
+        columns: [
+                {
+                  title: "Transaction ID",
+                  dataIndex: "transactionID",
+                  key: "transactionID",
+                },
+                {
+                  title: "Customer ID",
+                  dataIndex: "customerID",
+                  key: "customerID",
+                },
+                {
+                  title: "Product",
+                  dataIndex: "subschedule",
+                  key: "subschedule",
+                },
+                {
+                  title: "Missing Field",
+                  dataIndex: "field",
+                  key: "field",
+                }
+              ],
+        data: error_data,
+      });
+    } else {
+      console.error("errorsInData is not an array:", errorsInData);
+    }
+  } catch (error) {
+    console.error("Error fetching table data:", error);
+  }
+  };
   
       fetchPieChartData(); // Call the async function
       fetchTableData();
     }, []);
-
-    //segregate flag 0 transactions into compliant_transactions or potentialDefaulters_transactions based on risk label
-    const [compliant_transactions, setCompliant_transactions] = useState();
-    // const [compliantData, setCompliantData] = useState({
-    //   columns: [
-    //     {
-    //       title: "Risk Label",
-    //       dataIndex: "riskLabel",
-    //       key: "riskLabel",
-    //     },
-    //     {
-    //       title: "Transaction ID",
-    //       dataIndex: "transactionID",
-    //       key: "transactionID",
-    //     },
-    //     {
-    //       title: "Customer ID",
-    //       dataIndex: "customerID",
-    //       key: "customerID",
-    //     },
-    //     {
-    //       title: "Product",
-    //       dataIndex: "subschedule",
-    //       key: "subschedule",
-    //     },
-    //   ],
-    //   data: data.compliant_transactions.map((transaction, index) => ({
-    //     key: index + 1, // Unique key for each row
-    //     riskLabel: "Low",
-    //     transactionID: transaction.transactionID,
-    //     customerID: transaction.customerID,
-    //     subschedule: transaction.subschedule,
-    //   })),  
-    // })
-    
-
 
     const pieChartOptions = {
       plugins: {
@@ -263,211 +379,7 @@ Chart.register(
         ],
       });
     
-      //potential defaulters table data
-      const [potentialDefaultersTableData, setPotentialDefaultersTableData] = useState({
-        columns: [
-          {
-            title: "Transaction ID",
-            dataIndex: "transactionID",
-            key: "transactionID",
-          },
-          {
-            title: "Customer ID",
-            dataIndex: "customerID",
-            key: "customerID",
-          },
-          {
-            title: "Product",
-            dataIndex: "subschedule",
-            key: "subschedule",
-          },
-          {
-            title: "% Risk of defaulting",
-            dataIndex: "riskscore",
-            key: "riskscore",
-          },
-          {
-            title: "Risk Label",
-            dataIndex: "riskLabel",
-            key: "riskLabel",
-          },
-          {
-            title: "Failing Field",
-            dataIndex: "field",
-            key: "field",
-          },
-          {
-            title: "Reason for Failure",
-            dataIndex: "reason",
-            key: "reason",
-          },
-          {
-            title: "Steps for Remediation",
-            dataIndex: "remediation",
-            key: "remediation",
-          },
-        ],
-        data: [
-          {
-            key: "1",
-            transactionID: 12345671,
-            customerID: "ABCDEF",
-            subschedule: "International Auto Loan",
-            riskscore: 80,
-            riskLabel: "Medium",
-            field: "Amount",
-            reason: "Exceeds limit",
-            remediation: "Reduce amount to within the limit",
-          },
-          {
-            key: "2",
-            transactionID: 12345672,
-            customerID: "OQURKS",
-            subschedule: "US Auto Loan",
-            riskscore: 70,
-            riskLabel: "Medium",
-            field: "Date",
-            reason: "Invalid format",
-            remediation: "Correct date format",
-          },
-          {
-            key: "3",
-            transactionID: 12345673,
-            customerID: "JOAKEH",
-            subschedule: "International Credit Card",
-            riskscore: 60,
-            riskLabel: "High",
-            field: "Account Number",
-            reason: "Missing value",
-            remediation: "Provide account number",
-          },
-          {
-            key: "4",
-            transactionID: 12345674,
-            customerID: "UTEKXA",
-            subschedule: "Student Loan",
-            riskscore: 50,
-            riskLabel: "High",
-            field: "Currency",
-            reason: "Unsupported currency",
-            remediation: "Correct currency",
-          },
-          {
-            key: "5",
-            transactionID: 12345675,
-            customerID: "OSYFMA",
-            subschedule: "International First Lien Mortgage",
-            riskscore: 40,
-            riskLabel: "Medium",
-            field: "Description",
-            reason: "Too long",
-            remediation: "Shorten description",
-          },
-          {
-            key: "6",
-            transactionID: 12345676,
-            customerID: "BEUGHA",
-            subschedule: "International Other Consumer",
-            riskscore: 30,
-            riskLabel: "High",
-            field: "Amount",
-            reason: "Exceeds limit",
-            remediation: "Reduce amount to within the limit",
-          },
-        ],
-      })
-    
-      //Errors in data table data
-      const [errorsInDataTableData, setErrorsInDataTableData] = useState({
-        columns: [
-          {
-            title: "Transaction ID",
-            dataIndex: "transactionID",
-            key: "transactionID",
-          },
-          {
-            title: "Customer ID",
-            dataIndex: "customerID",
-            key: "customerID",
-          },
-          {
-            title: "Product",
-            dataIndex: "subschedule",
-            key: "subschedule",
-          },
-          {
-            title: "Missing Field",
-            dataIndex: "field",
-            key: "field",
-          },
-          {
-            title: "Reason for Failure",
-            dataIndex: "reason",
-            key: "reason",
-          },
-          {
-            title: "Steps for Remediation",
-            dataIndex: "remediation",
-            key: "remediation",
-          },
-        ],
-        data: [
-          {
-            key: "1",
-            transactionID: 12345671,
-            customerID: "ABCDEF",
-            subschedule: "International Auto Loan",
-            field: "Amount",
-            reason: "Exceeds limit",
-            remediation: "Reduce amount to within the limit",
-          },
-          {
-            key: "2",
-            transactionID: 12345672,
-            customerID: "OQURKS",
-            subschedule: "US Auto Loan",
-            field: "Date",
-            reason: "Invalid format",
-            remediation: "Correct date format",
-          },
-          {
-            key: "3",
-            transactionID: 12345673,
-            customerID: "JOAKEH",
-            subschedule: "International Credit Card",
-            field: "Account Number",
-            reason: "Missing value",
-            remediation: "Provide account number",
-          },
-          {
-            key: "4",
-            transactionID: 12345674,
-            customerID: "UTEKXA",
-            subschedule: "Student Loan",
-            field: "Currency",
-            reason: "Unsupported currency",
-            remediation: "Correct currency",
-          },
-          {
-            key: "5",
-            transactionID: 12345675,
-            customerID: "OSYFMA",
-            subschedule: "International First Lien Mortgage",
-            field: "Description",
-            reason: "Too long",
-            remediation: "Shorten description",
-          },
-          {
-            key: "6",
-            transactionID: 12345676,
-            customerID: "BEUGHA",
-            subschedule: "International Other Consumer",
-            field: "Amount",
-            reason: "Exceeds limit",
-            remediation: "Reduce amount to within the limit",
-          },
-        ],
-      })
+      
 
     //   // Set bar chart data
     //   setBarChartData({
@@ -504,105 +416,8 @@ Chart.register(
     //     ],
     //   });
 
-    //   //set regulatory table data
-      
-    //   //set potential defaulters table data
-    //   setPotentialDefaultersTableData({
-    //     columns: [
-    //       {
-    //         title: "Transaction ID",
-    //         dataIndex: "transactionID",
-    //         key: "transactionID",
-    //       },
-    //       {
-    //         title: "Customer ID",
-    //         dataIndex: "customerID",
-    //         key: "customerID",
-    //       },
-    //       {
-    //         title: "Product",
-    //         dataIndex: "subschedule",
-    //         key: "subschedule",
-    //       },
-    //       {
-    //         title: "% Risk of defaulting",
-    //         dataIndex: "riskscore",
-    //         key: "riskscore",
-    //       },
-    //       {
-    //         title: "Failing Field",
-    //         dataIndex: "field",
-    //         key: "field",
-    //       },
-    //       {
-    //         title: "Reason for Failure",
-    //         dataIndex: "reason",
-    //         key: "reason",
-    //       },
-    //       {
-    //         title: "Steps for Remediation",
-    //         dataIndex: "remediation",
-    //         key: "remediation",
-    //       },
-    //     ],
-    //     data: data.operational_risk_transactions.map((transaction, index) => ({
-    //       key: index + 1, // Unique key for each row
-    //       transactionID: transaction.transactionID,
-    //       subschedule: transaction.subschedule,
-    //       field: transaction.field,
-    //       reason: transaction.reason,
-    //       remediation: transaction.remediation,
-    //     })),
-    //   });
+    
 
-    //   //set filtered transactions table data
-    //   setErrorsInDataTableData({
-    //     columns: [
-    //       {
-    //         title: "Transaction ID",
-    //         dataIndex: "transactionID",
-    //         key: "transactionID",
-    //       },
-    //       {
-    //         title: "Customer ID",
-    //         dataIndex: "customerID",
-    //         key: "customerID",
-    //       },
-    //       {
-    //         title: "Product",
-    //         dataIndex: "subschedule",
-    //         key: "subschedule",
-    //       },
-    //       {
-    //         title: "% Risk of defaulting",
-    //         dataIndex: "riskscore",
-    //         key: "riskscore",
-    //       },
-    //       {
-    //         title: "Missing Field",
-    //         dataIndex: "field",
-    //         key: "field",
-    //       },
-    //       {
-    //         title: "Reason for Failure",
-    //         dataIndex: "reason",
-    //         key: "reason",
-    //       },
-    //       {
-    //         title: "Steps for Remediation",
-    //         dataIndex: "remediation",
-    //         key: "remediation",
-    //       },
-    //     ],
-    //     data: data.operational_risk_transactions.map((transaction, index) => ({
-    //       key: index + 1, // Unique key for each row
-    //       transactionID: transaction.transactionID,
-    //       subschedule: transaction.subschedule,
-    //       field: transaction.field,
-    //       reason: transaction.reason,
-    //       remediation: transaction.remediation,
-    //     })),
-    //   });
 
     const handleDownload = async () => {
 
@@ -685,11 +500,11 @@ Chart.register(
                   }
                      key="1">
                       <p>Compliant, low risk data</p>
-                    {/* <Table
-                      columns={compliantData.columns}
-                      dataSource={compliantData.data}
+                    <Table
+                      columns={compliantTableData.columns}
+                      dataSource={compliantTableData.data}
                       pagination={{ pageSize:5 }} //Enable pagination
-                    /> */}
+                    />
                   </TabPane>
                   <TabPane tab={
                     <span style={{
@@ -734,8 +549,8 @@ Chart.register(
                      key="4">
                       <p>Data with missing attributes according to the rules</p>
                     <Table
-                      columns={errorsInDataTableData.columns}
-                      dataSource={errorsInDataTableData.data}
+                      columns={errorTableData.columns}
+                      dataSource={errorTableData.data}
                       pagination={{ pageSize:5 }} //Enable pagination
                     />
                   </TabPane>
